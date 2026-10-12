@@ -1,0 +1,52 @@
+@startuml
+ title Railway Reservation System — UML Use-Case Diagram
+ left to right direction
+ skinparam backgroundColor #FFFFFF
+ skinparam shadowing false
+ skinparam packageStyle rectangle
+ skinparam usecase {
+   BackgroundColor #F5FAFA
+   BorderColor #2C6672
+   FontColor #17324D
+   FontSize 14
+ }
+ skinparam rectangle {
+   BorderColor #2C6672
+   FontColor #17324D
+   BackgroundColor #FBFDFD
+ }
+ skinparam actor {
+   BorderColor #17324D
+   FontColor #17324D
+ }
+ skinparam ArrowColor #61758A
+ skinparam ArrowFontColor #526579
+ skinparam ArrowFontSize 11
+
+ actor Passenger
+ rectangle "Railway Reservation System" {
+   usecase "Search Trains" as UC_Search
+   usecase "Check Seat Availability" as UC_Avail
+   usecase "Book Ticket" as UC_Book
+   usecase "Cancel Ticket" as UC_Cancel
+   usecase "Validate Search Input" as UC_SearchValidate
+   usecase "Validate Passenger Details" as UC_PassengerValidate
+   usecase "Generate PNR and\nBooking Confirmation" as UC_PNR
+   usecase "Validate PNR and\nCancellation Deadline" as UC_CancelValidate
+   usecase "Calculate and Display\nRefund Amount" as UC_Refund
+   usecase "Release Seats / Update\nAvailability" as UC_Release
+ }
+
+ Passenger --> UC_Search
+ Passenger --> UC_Avail
+ Passenger --> UC_Book
+ Passenger --> UC_Cancel
+
+ UC_Search ..> UC_SearchValidate : <<include>>
+ UC_Book ..> UC_Avail : <<include>>
+ UC_Book ..> UC_PassengerValidate : <<include>>
+ UC_Book ..> UC_PNR : <<include>>
+ UC_Cancel ..> UC_CancelValidate : <<include>>
+ UC_Cancel ..> UC_Refund : <<include>>
+ UC_Cancel ..> UC_Release : <<include>>
+@enduml
