@@ -64,7 +64,35 @@ As a passenger, I want to see my refund amount before confirming a cancellation,
   * The passenger can decline the cancellation and keep the booking.
   * No refund is given if cancellation is requested after the train has departed.
 
+## User Story 6 – Register and Log In as a Passenger
+
+As a passenger, I want to register an account and log in, so that my bookings are linked to me and my personal details stay private.
+
+* Priority: High
+* Requirements: FR-09 (proposed), NFR-05 (proposed: security)
+* Acceptance Criteria:
+   * Registration requires name, email or phone, and password; empty or badly formatted fields are rejected with a clear message.
+   * An email or phone that is already registered is rejected.
+   * Passwords are stored hashed, never in plain text.
+   * Login with wrong credentials shows a generic error, without revealing which field was wrong.
+   * Booking and cancellation are available only to logged-in passengers.
+   * Logging out ends the session.
+
+## User Story 7 – Admin: Add and Manage Trains and Schedules
+
+As an administrator, I want to add, edit and remove trains, routes and schedules, so that passengers always see correct train information.
+
+* Priority: High
+* Requirements: FR-10 (proposed), NFR-05 (proposed)
+* Acceptance Criteria:
+   * Only a logged-in admin can access these functions.
+   * A train requires number, name, source, destination, stops, departure and arrival times, and running days.
+   * A duplicate train number is rejected.
+   * A train that has active bookings cannot be deleted; the admin sees a message explaining why.
+   * Schedule changes apply to future bookings only.
+
 ## Backlog (not yet written)
 
-* User Story 6 – Register and log in as a passenger
-* User Story 7 – Admin: add and manage trains and schedules
+* User Story 8 – Check PNR status and booking details
+* User Story 9 – Prevent double booking of the last seat (concurrent bookings)
+* User Story 10 – Join a waiting list and get automatic confirmation
