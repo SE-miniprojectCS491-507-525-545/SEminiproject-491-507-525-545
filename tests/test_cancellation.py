@@ -191,3 +191,43 @@ def test_preview_refund_refused_inside_deadline(bookings):
 def test_preview_refund_unknown_pnr_rejected(bookings):
     with pytest.raises(CancellationError, match="No booking found"):
         preview_refund("PNR9999", bookings, TRAINS, NOW)
+
+# --- Bug #9: edge cases around the 4-hour cutoff ---
+
+EXACTLY_4H = datetime(2026, 11, 2, 2, 0)  # train departs 06:00
+JUST_INSIDE = datetime(2026, 11, 2, 2, 1)  # 3 hours 59 minutes before
+AFTER_DEPARTURE = datetime(2026, 11, 2, 7, 0)
+
+
+def test_cancel_at_exactly_4_hours_is_allowed(bookings, availability):
+    result = cancel_ticket("PNR1001", bookings, availability, TRAINS, EXACTLY_4H)
+    assert bookings["PNR1001"].status == CANCELLED
+    assert availability[KEY] == 12
+    assert result.refund_amount == 500.0
+
+
+def test_cancel_at_3_hours_59_minutes_is_refused(bookings, availability):
+    with pytest.raises(CancellationError, match="4 hours before departure"):
+        cancel_ticket("PNR1001", bookings, availability, TRAINS, JUST_INSIDE)
+    assert bookings["PNR1001"].status == "CONFIRMED"
+    assert availability[KEY] == 10
+
+
+def test_cancel_after_departure_is_refused_with_no_refund(bookings, availability):
+    with pytest.raises(CancellationError, match="4 hours before departure"):
+        cancel_ticket("PNR1001", bookings, availability, TRAINS, AFTER_DEPARTURE)
+    assert bookings["PNR1001"].status == "CONFIRMED"
+    assert availability[KEY] == 10
+
+
+def test_second_cancel_shows_already_cancelled(bookings, availability):
+    cancel_ticket("PNR1001", bookings, availability, TRAINS, EXACTLY_4H)
+    with pytest.raises(CancellationError, match="already cancelled"):
+        cancel_ticket("PNR1001", bookings, availability, TRAINS, EXACTLY_4H)
+    assert availability[KEY] == 12
+
+
+def test_preview_matches_actual_refund_at_exactly_4_hours(bookings, availability):
+    preview = preview_refund("PNR1001", bookings, TRAINS, EXACTLY_4H)
+    result = cancel_ticket("PNR1001", bookings, availability, TRAINS, EXACTLY_4H)
+    assert preview == result.refund_amount
