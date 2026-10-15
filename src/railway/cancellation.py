@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 CANCELLED = "CANCELLED"
+MIN_HOURS_BEFORE_DEPARTURE = 4  # BR-02
 
 
 class CancellationError(ValueError):
@@ -36,12 +38,38 @@ def validate_cancellation(pnr, bookings):
     return booking
 
 
-def cancel_ticket(pnr, bookings, availability, refund_amount=0.0):
-    """Cancel a confirmed booking and release its seats (FR-06).
+def departure_datetime(travel_date, departure):
+    """Combine a travel date with a 'HH:MM' departure time."""
+    hours, minutes = departure.split(":")
+    return datetime(
+        travel_date.year, travel_date.month, travel_date.day,
+        int(hours), int(minutes),
+    )
+
+
+def validate_deadline(travel_date, departure, now=None):
+    """Allow cancellation only up to 4 hours before departure (BR-02)."""
+    now = now or datetime.now()
+    time_left = departure_datetime(travel_date, departure) - now
+    if time_left < timedelta(hours=MIN_HOURS_BEFORE_DEPARTURE):
+        raise CancellationError(
+            f"Cancellation is allowed only up to "
+            f"{MIN_HOURS_BEFORE_DEPARTURE} hours before departure."
+        )
+
+
+def cancel_ticket(pnr, bookings, availability, trains, now=None, refund_amount=0.0):
+    """Cancel a confirmed booking and release its seats (FR-06, BR-02).
 
     `availability` maps (train_number, travel_date, seat_class) -> free seats.
+    `trains` is the list of Train objects, used to find the departure time.
     """
     booking = validate_cancellation(pnr, bookings)
+
+    train = next((t for t in trains if t.number == booking.train_number), None)
+    if train is None:
+        raise CancellationError(f"Train {booking.train_number} not found.")
+    validate_deadline(booking.travel_date, train.departure, now)
 
     booking.status = CANCELLED
     key = (booking.train_number, booking.travel_date, booking.seat_class)
