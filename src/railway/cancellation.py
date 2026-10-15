@@ -3,6 +3,8 @@ from datetime import datetime, timedelta
 
 CANCELLED = "CANCELLED"
 MIN_HOURS_BEFORE_DEPARTURE = 4  # BR-02
+FEE_RATE_MORE_THAN_24H = 0.10  # FR-07: more than 24 hours before departure
+FEE_RATE_4_TO_24H = 0.50  # FR-07: from 24 hours down to 4 hours before
 
 
 class CancellationError(ValueError):
@@ -13,7 +15,7 @@ class CancellationError(ValueError):
 class CancellationResult:
     pnr: str
     seats_released: int
-    refund_amount: float = 0.0  # calculated in FR-07
+    refund_amount: float = 0.0
 
 
 def _clean(value):
@@ -58,21 +60,52 @@ def validate_deadline(travel_date, departure, now=None):
         )
 
 
-def cancel_ticket(pnr, bookings, availability, trains, now=None, refund_amount=0.0):
-    """Cancel a confirmed booking and release its seats (FR-06, BR-02).
+def calculate_refund(fare, travel_date, departure, now=None):
+    """Refund = fare minus a cancellation fee (FR-07).
+
+    More than 24 hours before departure: 10% fee. From 24 hours down: 50% fee.
+    No refund once the train has departed. (Cancelling inside the last
+    4 hours is refused separately by validate_deadline, BR-02.)
+    """
+    now = now or datetime.now()
+    time_left = departure_datetime(travel_date, departure) - now
+    if time_left <= timedelta(0):
+        return 0.0
+    if time_left > timedelta(hours=24):
+        fee_rate = FEE_RATE_MORE_THAN_24H
+    else:
+        fee_rate = FEE_RATE_4_TO_24H
+    return round(fare - fare * fee_rate, 2)
+
+
+def _find_train(booking, trains):
+    train = next((t for t in trains if t.number == booking.train_number), None)
+    if train is None:
+        raise CancellationError(f"Train {booking.train_number} not found.")
+    return train
+
+
+def preview_refund(pnr, bookings, trains, now=None):
+    """Show the refund before the cancellation is final (FR-07). Changes nothing."""
+    booking = validate_cancellation(pnr, bookings)
+    train = _find_train(booking, trains)
+    validate_deadline(booking.travel_date, train.departure, now)
+    return calculate_refund(booking.fare, booking.travel_date, train.departure, now)
+
+
+def cancel_ticket(pnr, bookings, availability, trains, now=None):
+    """Cancel a confirmed booking, release its seats and work out the refund.
 
     `availability` maps (train_number, travel_date, seat_class) -> free seats.
     `trains` is the list of Train objects, used to find the departure time.
     """
     booking = validate_cancellation(pnr, bookings)
-
-    train = next((t for t in trains if t.number == booking.train_number), None)
-    if train is None:
-        raise CancellationError(f"Train {booking.train_number} not found.")
+    train = _find_train(booking, trains)
     validate_deadline(booking.travel_date, train.departure, now)
+    refund = calculate_refund(booking.fare, booking.travel_date, train.departure, now)
 
     booking.status = CANCELLED
     key = (booking.train_number, booking.travel_date, booking.seat_class)
     availability[key] = availability.get(key, 0) + booking.passengers
 
-    return CancellationResult(_clean(pnr), booking.passengers, refund_amount)
+    return CancellationResult(_clean(pnr), booking.passengers, refund)
