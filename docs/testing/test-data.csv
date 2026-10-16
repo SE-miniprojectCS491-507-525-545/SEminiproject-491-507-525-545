@@ -1,0 +1,23 @@
+TC_ID,Data_Type,Value,Purpose,Status
+TD-01,Station,Bengaluru,Known valid station,Current test data
+TD-02,Station,Chennai,Known valid station,Current test data
+TD-03,Station,Mysuru,Known valid station,Current test data
+TD-04,Station,Atlantis,Unknown station for validation test,Current test data
+TD-05,Date,2026-10-01,Past date relative to fixed test reference date 2026-10-05,Current test data
+TD-06,Date,2026-10-05,Fixed reference date accepted by search validation,Current test data
+TD-07,Date,2026-10-06,Tuesday; valid future search relative to reference date,Current test data
+TD-08,Date,2026-10-07,Wednesday; Shatabdi weekday-filter test,Current test data
+TD-09,Train,12607 - Lalbagh Express,Bengaluru to Chennai; runs every day,Current test fixture
+TD-10,Train,12008 - Shatabdi,Bengaluru to Mysuru; runs Monday and Wednesday,Current test fixture
+TD-11,Passenger_Count,1,Minimum valid passenger count for planned booking tests,Planned
+TD-12,Passenger_Count,6,Maximum valid passenger count for planned booking tests,Planned
+TD-13,Passenger_Count,7,Over-limit passenger count for planned booking tests,Planned
+TD-14,Passenger_Age,1,Lower valid age boundary for planned booking tests,Planned
+TD-15,Passenger_Age,120,Upper valid age boundary for planned booking tests,Planned
+TD-16,Passenger_Age,0,Invalid age below supported range,Planned
+TD-17,Passenger_Age,121,Invalid age above supported range,Planned
+TD-18,Cancellation_Lead_Time,More than 48 hours,Example only; refund slabs need confirmation,Planned
+TD-19,Cancellation_Lead_Time,4 hours,Boundary at the specified cancellation deadline,Planned
+TD-20,Cancellation_Lead_Time,Less than 4 hours,Expected cancellation rejection,Planned
+TD-21,PNR,VALID-EXAMPLE,Placeholder for future valid-PNR test; replace with seeded test booking,Planned
+TD-22,PNR,INVALID-EXAMPLE,Placeholder for unknown-PNR validation,Planned
