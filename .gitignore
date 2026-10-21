@@ -220,3 +220,7 @@ __marimo__/
 .venv/
 __pycache__/
 .coverage
+
+# Railway Reservation System database
+railway.db
+*.db
