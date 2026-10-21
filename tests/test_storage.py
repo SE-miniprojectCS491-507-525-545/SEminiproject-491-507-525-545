@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 
@@ -251,7 +251,9 @@ def test_cancel_ticket_works_on_data_loaded_from_the_database(seeded):
     bookings = storage.load_bookings(seeded)
     availability = storage.load_availability(seeded)
 
-    result = cancel_ticket("PNR1001", bookings, availability)
+    trains = storage.list_trains(seeded)
+    result = cancel_ticket("PNR1001", bookings, availability, trains,
+                           now=datetime(2026, 10, 21, 10, 0))
     storage.update_booking_status(seeded, "PNR1001", bookings["PNR1001"].status)
     storage.save_availability(seeded, availability)
 
