@@ -285,3 +285,58 @@ def test_search_works_with_the_shared_train_model(conn, train):
     found = search_trains("Bengaluru", "Delhi", TRAVEL, storage.list_trains(conn),
                           ["Bengaluru", "Delhi"], today=date(2026, 10, 21))
     assert [t.number for t in found] == ["12627"]
+
+# --- database location ---
+
+def test_default_database_path_is_fixed_in_the_project_folder():
+    from pathlib import Path
+    path = Path(storage.DEFAULT_DB_PATH)
+    assert path.is_absolute() and path.name == "railway.db"
+    assert (path.parent / "src" / "railway" / "storage.py").exists()
+
+
+def test_environment_variable_overrides_the_database_path(tmp_path, monkeypatch):
+    target = tmp_path / "custom.db"
+    monkeypatch.setenv("RAILWAY_DB", str(target))
+    storage.connect().close()
+    assert target.exists()
+
+
+# --- atomic cancellation (NFR-04) ---
+
+def test_apply_cancellation_updates_everything_together(seeded):
+    storage.add_booking(seeded, make_booking(passengers=2))
+    storage.add_seat_allocation(seeded, "PNR1001", "12627", TRAVEL, "3AC", 14)
+    assert storage.apply_cancellation(seeded, "PNR1001") == 2
+    assert storage.get_booking(seeded, "PNR1001").status == CANCELLED
+    assert storage.get_availability(seeded, "12627", TRAVEL, "3AC") == 12
+    assert storage.get_seat_numbers(seeded, "PNR1001") == []
+
+
+def test_cancelling_with_no_availability_row_never_exceeds_capacity(seeded):
+    storage.add_booking(seeded, make_booking(seat_class="SL", passengers=2))
+    storage.apply_cancellation(seeded, "PNR1001")
+    assert storage.get_availability(seeded, "12627", TRAVEL, "SL") == 120
+
+
+def test_apply_cancellation_rejects_unknown_and_already_cancelled(seeded):
+    with pytest.raises(StorageError):
+        storage.apply_cancellation(seeded, "NOPE")
+    storage.add_booking(seeded, make_booking())
+    storage.apply_cancellation(seeded, "PNR1001")
+    with pytest.raises(StorageError):
+        storage.apply_cancellation(seeded, "PNR1001")
+    assert storage.get_availability(seeded, "12627", TRAVEL, "3AC") == 12
+
+
+def test_failure_part_way_leaves_nothing_changed(seeded):
+    storage.add_booking(seeded, make_booking(passengers=2))
+    storage.add_seat_allocation(seeded, "PNR1001", "12627", TRAVEL, "3AC", 14)
+    seeded.execute(
+        "CREATE TRIGGER block_delete BEFORE DELETE ON seat_allocations "
+        "BEGIN SELECT RAISE(ABORT, 'simulated failure'); END")
+    with pytest.raises(StorageError):
+        storage.apply_cancellation(seeded, "PNR1001")
+    assert storage.get_booking(seeded, "PNR1001").status == "CONFIRMED"
+    assert storage.get_availability(seeded, "12627", TRAVEL, "3AC") == 10
+    assert storage.get_seat_numbers(seeded, "PNR1001") == [14]

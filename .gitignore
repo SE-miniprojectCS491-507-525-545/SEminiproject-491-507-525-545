@@ -224,3 +224,6 @@ __pycache__/
 # Railway Reservation System database
 railway.db
 *.db
+
+# macOS
+.DS_Store

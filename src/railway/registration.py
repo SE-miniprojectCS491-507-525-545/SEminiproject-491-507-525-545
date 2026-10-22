@@ -1,6 +1,6 @@
 import re
-from dataclasses import dataclass
 
+from railway.models import Passenger  # shared model (re-exported for old imports)
 from railway.security import hash_password
 
 MIN_PASSWORD_LENGTH = 8
@@ -9,13 +9,6 @@ EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 class RegistrationError(ValueError):
     """Raised when passenger registration input is invalid."""
-
-
-@dataclass(frozen=True)
-class Passenger:
-    email: str
-    name: str
-    password_hash: str
 
 
 def _clean(value):

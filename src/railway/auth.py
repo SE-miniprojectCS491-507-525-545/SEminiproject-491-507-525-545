@@ -43,6 +43,7 @@ def logout(token, sessions):
 def current_passenger(token, passengers, sessions):
     """Return the logged-in Passenger for a token, or raise AuthError."""
     email = sessions.get(token)
-    if email is None:
+    passenger = passengers.get(email) if email is not None else None
+    if passenger is None:
         raise AuthError("Not logged in.")
-    return passengers[email]
+    return passenger

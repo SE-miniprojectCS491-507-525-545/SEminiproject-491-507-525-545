@@ -1,4 +1,4 @@
-TC_ID,Data_Type,Value,Purpose,Status
+Data_ID,Data_Type,Value,Purpose,Status
 TD-01,Station,Bengaluru,Known valid station,Current test data
 TD-02,Station,Chennai,Known valid station,Current test data
 TD-03,Station,Mysuru,Known valid station,Current test data

@@ -1,5 +1,6 @@
-from datetime import date, datetime
+from datetime import date
 
+from railway.dates import to_date
 from railway.models import Train  # shared model (re-exported for old imports)
 
 
@@ -12,17 +13,7 @@ def _clean(value):
 
 
 def _parse_date(value):
-    """Accept a date, a datetime or 'YYYY-MM-DD' text and return a date."""
-    if isinstance(value, datetime):
-        return value.date()
-    if isinstance(value, date):
-        return value
-    if value is None or not str(value).strip():
-        raise SearchError("Travel date is required.")
-    try:
-        return date.fromisoformat(str(value).strip())
-    except ValueError:
-        raise SearchError("Travel date must be a valid date (YYYY-MM-DD).") from None
+    return to_date(value, SearchError)
 
 
 def stations_of(trains):

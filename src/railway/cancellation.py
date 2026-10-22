@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+from railway import storage
+
 CANCELLED = "CANCELLED"
 MIN_HOURS_BEFORE_DEPARTURE = 4  # BR-02
 FEE_RATE_MORE_THAN_24H = 0.10  # FR-07: more than 24 hours before departure
@@ -109,3 +111,25 @@ def cancel_ticket(pnr, bookings, availability, trains, now=None):
     availability[key] = availability.get(key, 0) + booking.passengers
 
     return CancellationResult(_clean(pnr), booking.passengers, refund)
+
+
+def cancel_booking(conn, pnr, now=None):
+    """Database version of cancel_ticket (FR-06, FR-07, BR-02, NFR-04).
+
+    Checks the PNR, the 4-hour deadline and the refund, then updates the
+    booking status, the free-seat count and the seat numbers together in one
+    step, so a failure part-way leaves nothing half-changed.
+    """
+    pnr = _clean(pnr)
+    found = storage.get_booking(conn, pnr) if pnr else None
+    booking = validate_cancellation(pnr, {pnr: found} if found else {})
+    train = storage.get_train(conn, booking.train_number)
+    if train is None:
+        raise CancellationError(f"Train {booking.train_number} not found.")
+    validate_deadline(booking.travel_date, train.departure, now)
+    refund = calculate_refund(booking.fare, booking.travel_date, train.departure, now)
+    try:
+        released = storage.apply_cancellation(conn, pnr)
+    except storage.StorageError as exc:
+        raise CancellationError(str(exc)) from exc
+    return CancellationResult(pnr, released, refund)
