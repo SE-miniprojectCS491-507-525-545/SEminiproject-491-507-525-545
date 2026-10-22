@@ -69,7 +69,7 @@ As a passenger, I want to see my refund amount before confirming a cancellation,
 As a passenger, I want to register an account and log in, so that my bookings are linked to me and my personal details stay private.
 
 * Priority: High
-* Requirements: FR-09 (proposed), NFR-05 (proposed: security)
+* Requirements: FR-09, FR-10, SR-01
 * Acceptance Criteria:
    * Registration requires name, email or phone, and password; empty or badly formatted fields are rejected with a clear message.
    * An email or phone that is already registered is rejected.
@@ -83,7 +83,7 @@ As a passenger, I want to register an account and log in, so that my bookings ar
 As an administrator, I want to add, edit and remove trains, routes and schedules, so that passengers always see correct train information.
 
 * Priority: High
-* Requirements: FR-10 (proposed), NFR-05 (proposed)
+* Requirements: FR-13, FR-14, FR-15, SR-02
 * Acceptance Criteria:
    * Only a logged-in admin can access these functions.
    * A train requires number, name, source, destination, stops, departure and arrival times, and running days.

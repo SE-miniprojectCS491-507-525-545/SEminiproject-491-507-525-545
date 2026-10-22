@@ -5,13 +5,17 @@ Every function takes the connection returned by connect() as its first argument.
 
 Dates are stored as ISO text ('2026-11-02') and come back as datetime.date.
 """
+import os
 import sqlite3
 from contextlib import contextmanager
 from datetime import date
+from pathlib import Path
 
-from railway.models import Booking, Passenger, SeatClass, Traveller, Train
+from railway.models import CANCELLED, Booking, Passenger, SeatClass, Traveller, Train
 
-DEFAULT_DB_PATH = "railway.db"
+# Always the project folder, no matter where the program is started from.
+# Set the RAILWAY_DB environment variable to use a different file.
+DEFAULT_DB_PATH = str(Path(__file__).resolve().parents[2] / "railway.db")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS trains (
@@ -118,9 +122,12 @@ def init_db(conn):
     conn.executescript(SCHEMA)
 
 
-def connect(path=DEFAULT_DB_PATH):
-    """Open (and set up) the database. Use ':memory:' for a throw-away test DB."""
-    conn = sqlite3.connect(path)
+def connect(path=None):
+    """Open (and set up) the database. Use ':memory:' for a throw-away test DB.
+
+    With no path it uses $RAILWAY_DB if set, otherwise DEFAULT_DB_PATH.
+    """
+    conn = sqlite3.connect(path or os.environ.get("RAILWAY_DB") or DEFAULT_DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     init_db(conn)
@@ -315,3 +322,43 @@ def delete_seat_allocations(conn, pnr):
     """Free all seats held by a booking (used when it is cancelled)."""
     with conn:
         conn.execute("DELETE FROM seat_allocations WHERE pnr = ?", (pnr,))
+
+
+# ----------------------------------------------------------- cancellation
+
+def apply_cancellation(conn, pnr):
+    """Cancel a booking in ONE all-or-nothing step (NFR-04).
+
+    Marks the booking CANCELLED, gives its seats back to the free-seat count
+    and frees its seat numbers. If no availability row exists yet, every seat
+    counts as free (same rule as availability.py); the count never goes above
+    the class capacity. Returns the number of seats released.
+    """
+    with _write(conn, f"cancellation of booking {pnr}"):
+        row = conn.execute("SELECT * FROM bookings WHERE pnr = ?", (pnr,)).fetchone()
+        if row is None:
+            raise StorageError(f"No booking found for PNR {pnr}.")
+        if row["status"] == CANCELLED:
+            raise StorageError(f"Booking {pnr} is already cancelled.")
+
+        total = conn.execute(
+            "SELECT total_seats FROM seat_classes WHERE train_number = ? AND seat_class = ?",
+            (row["train_number"], row["seat_class"]),
+        ).fetchone()["total_seats"]
+        current = conn.execute(
+            "SELECT free_seats FROM availability "
+            "WHERE train_number = ? AND travel_date = ? AND seat_class = ?",
+            (row["train_number"], row["travel_date"], row["seat_class"]),
+        ).fetchone()
+        free = total if current is None else current["free_seats"]
+
+        conn.execute("UPDATE bookings SET status = ? WHERE pnr = ?", (CANCELLED, pnr))
+        conn.execute(
+            "INSERT INTO availability VALUES (?, ?, ?, ?) "
+            "ON CONFLICT(train_number, travel_date, seat_class) "
+            "DO UPDATE SET free_seats = excluded.free_seats",
+            (row["train_number"], row["travel_date"], row["seat_class"],
+             min(total, free + row["passengers"])),
+        )
+        conn.execute("DELETE FROM seat_allocations WHERE pnr = ?", (pnr,))
+    return row["passengers"]

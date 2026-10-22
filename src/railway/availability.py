@@ -6,9 +6,10 @@ Typical use:
     print(info.free_seats, info.status)
 """
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 
 from railway import storage
+from railway.dates import to_date
 
 AVAILABLE = "AVAILABLE"
 SOLD_OUT = "SOLD OUT"
@@ -36,36 +37,25 @@ class Availability:
 
 
 def _to_date(value):
-    """Accept a date, datetime or 'YYYY-MM-DD' string."""
-    if isinstance(value, datetime):
-        return value.date()
-    if isinstance(value, date):
-        return value
-    if value is None or not str(value).strip():
-        raise AvailabilityError("Travel date is required")
-    try:
-        return date.fromisoformat(str(value).strip())
-    except ValueError:
-        raise AvailabilityError(
-            "Travel date must be a valid date in YYYY-MM-DD format") from None
+    return to_date(value, AvailabilityError)
 
 
 def _find_train(conn, train_number):
     number = str(train_number or "").strip()
     train = storage.get_train(conn, number) if number else None
     if train is None:
-        raise AvailabilityError(f"Train {number or '(blank)'} not found")
+        raise AvailabilityError(f"Train {number or '(blank)'} not found.")
     return train
 
 
 def _check_day(train, day, today):
     today = today or date.today()
     if day < today:
-        raise AvailabilityError("Travel date cannot be in the past")
+        raise AvailabilityError("Travel date cannot be in the past.")
     if day.weekday() not in train.runs_on:
         raise AvailabilityError(
             f"Train {train.number} does not run on {day.isoformat()} "
-            f"({_WEEKDAYS[day.weekday()]})")
+            f"({_WEEKDAYS[day.weekday()]}).")
 
 
 def _availability_for(conn, train, day, seat_class):
@@ -88,7 +78,7 @@ def check_availability(conn, train_number, travel_date, seat_class, today=None):
         offered = ", ".join(c.seat_class for c in classes.values()) or "none"
         raise AvailabilityError(
             f"Class {wanted or '(blank)'} is not available on train "
-            f"{train.number}. Choose from: {offered}")
+            f"{train.number}. Choose from: {offered}.")
     return _availability_for(conn, train, day, classes[wanted])
 
 

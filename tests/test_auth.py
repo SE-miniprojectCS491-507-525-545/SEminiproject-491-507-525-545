@@ -109,3 +109,8 @@ def test_current_passenger_after_logout_is_refused(passengers):
 def test_current_passenger_with_unknown_token_is_refused(passengers):
     with pytest.raises(AuthError, match="Not logged in"):
         current_passenger("not-a-real-token", passengers, {})
+
+def test_session_for_a_deleted_account_gives_auth_error_not_key_error():
+    sessions = {"tok": "ghost@example.com"}
+    with pytest.raises(AuthError):
+        current_passenger("tok", {}, sessions)

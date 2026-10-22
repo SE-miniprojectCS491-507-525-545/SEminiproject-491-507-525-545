@@ -94,7 +94,7 @@ The system shall allow a passenger to cancel a booked ticket by entering the PNR
 **Acceptance Criteria:**
 
 * The passenger can enter a PNR to look up a booking.
-* The system cancels a valid, active booking and releases the seats back to availability.
+* The system cancels a valid, active booking and releases the seats back to availability (the available seat count for that class increases by the number of cancelled seats).
 * The system displays an error for an invalid PNR.
 * The system displays an error if the booking is already cancelled.
 * The system displays a cancellation confirmation with the PNR and status.
@@ -116,17 +116,34 @@ The system shall display the refund amount to the passenger before the cancellat
 
 ---
 
-### BR-02 — Refund Rule
+### FR-08 — Cancellation Input Validation
 
-Refund percentage depends on how long before departure the ticket is cancelled. Exact slabs are TBD with the team (for example, 100% more than 48 hours before departure, 50% between 12 and 48 hours, 0% under 12 hours).
+**Requirement:**
+The system shall validate the PNR entered for cancellation and reject invalid entries with a clear error message.
 
----
+**Priority:** Medium
 
-### BR-01 — Maximum Passengers per Booking
+**Acceptance Criteria:**
+
+* The system rejects an empty PNR field.
+* The system rejects a PNR that does not exist in the system.
+* The system rejects cancellation of a booking that has already been cancelled.
+
+## 2. Business Rules
+
+### BR-01 — Maximum 6 Passengers
 
 A single booking may contain at most 6 passengers.
 
-## 2. Non-Functional Requirements
+---
+
+### BR-02 — Cancellation and Refund Rules
+
+A booking can be cancelled only up to 4 hours before the scheduled departure time (exactly 4 hours is allowed). A cancellation closer than 4 hours, including after departure, is refused, so no refund is paid in that case.
+
+Otherwise the refund is the ticket fare minus a cancellation fee: **10%** of the fare when cancelling more than 24 hours before departure, and **50%** from 24 hours down to 4 hours before departure. The team may still change these figures (see `docs/deviation-log.md`).
+
+## 3. Non-Functional Requirements
 
 ### NFR-01 — Performance
 
@@ -155,6 +172,7 @@ A first-time passenger shall be able to complete a train search without external
 * Error messages state what is wrong and how to fix it.
 
 ---
+
 ### NFR-03 — Reliability
 
 **Requirement:**
@@ -169,58 +187,6 @@ The system shall never assign the same seat to two different passengers for the 
 
 ---
 
-### FR-06 — Cancel Ticket
-
-**Requirement:**
-The system shall allow a passenger to cancel a confirmed booking using the PNR.
-
-**Priority:** High
-
-**Acceptance Criteria:**
-
-* The passenger can enter a valid PNR to retrieve a booking.
-* The system allows cancellation only if the booking exists and has not already been cancelled.
-* The system increases the available seat count for that class by the number of cancelled seats.
-* The system displays a cancellation confirmation with the PNR and refund amount.
-
----
-
-### FR-07 — Refund Calculation
-
-**Requirement:**
-The system shall calculate a refund amount based on how close the cancellation is to the travel date.
-
-**Priority:** Medium
-
-**Acceptance Criteria:**
-
-* The system deducts a cancellation fee from the original fare.
-* The refund amount is displayed to the passenger before the cancellation is finalised.
-* No refund is given if cancellation is requested after the train has departed.
-
----
-
-### FR-08 — Cancellation Input Validation
-
-**Requirement:**
-The system shall validate the PNR entered for cancellation and reject invalid entries with a clear error message.
-
-**Priority:** Medium
-
-**Acceptance Criteria:**
-
-* The system rejects an empty PNR field.
-* The system rejects a PNR that does not exist in the system.
-* The system rejects cancellation of a booking that has already been cancelled.
-
----
-
-### BR-02 — Cancellation Deadline
-
-A booking can only be cancelled up to 4 hours before the scheduled departure time.
-
----
-
 ### NFR-04 — Data Consistency
 
 **Requirement:**
@@ -231,3 +197,7 @@ The system shall ensure that a cancelled seat is immediately available for a new
 **Acceptance Criteria:**
 
 * Once a cancellation is confirmed, the seat count update is visible to the next search/booking request with no delay.
+
+## 4. Requirements Defined in the SRS
+
+The remaining requirements are specified in `docs/SRS.docx`: FR-09 (registration), FR-10 (login and logout), FR-11 (view booking by PNR), FR-12 (view my bookings), FR-13 to FR-15 (administration), NFR-05 (data persistence), SR-01 (password protection) and SR-02 (access control). This file and the SRS use the same IDs.
