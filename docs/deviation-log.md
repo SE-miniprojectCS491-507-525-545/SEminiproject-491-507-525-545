@@ -15,6 +15,7 @@ explained during the final demo.
 | 7 | Process | One repository | The team moved to a new repository. Issue numbers changed. Earlier pull requests (#3 and #25 to #29) remain in the original repository, which is kept unchanged | Repository was reorganised at the start of Sprint 1. | Done |
 | 8 | SRS FR-09 and User Story 6 (Registration) | Name, email **or phone**, and password; a duplicate email or phone is rejected | Name, email and password only. A duplicate email is rejected. There is no phone field | Email is enough to identify an account for the demo. Phone can be added later. | Confirm with the team |
 | 9 | SRS FR-02 (Seat availability) | Shows seats per class, with a full class shown as "Waiting list" or "Not available" | A full class is reported as sold out (0 free seats). There is no waiting list | Waiting list is outside the agreed scope (User Story 10 is still in the backlog). | Confirm with the team |
+| 10 | Sprint 1 plan (booking calls `inventory.reserve`) | Booking calls a separate reserve step in the availability code | Seats are reserved inside the booking's own database step (`storage.book_seats`). There is no separate `reserve` function | A separate call would be a second save, so a failure between the two could lose seats. One step keeps FR-04, NFR-03 and NFR-04 correct. | Done. Tell the team no `reserve` is needed |
 
 ## Notes
 

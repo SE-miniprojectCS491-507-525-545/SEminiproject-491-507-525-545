@@ -29,7 +29,7 @@ The project is being developed using **Python** and follows an Agile software de
 | Cancellation (4-hour deadline, refund) | BR-02, FR-07 | Done |
 | Registration and password hashing | FR-09, SR-01 | Done |
 | Login and logout | FR-10 | Done |
-| Booking, PNR, seat allocation | FR-04, FR-05, BR-01 | In progress |
+| Booking, PNR, seat allocation, traveller checks | FR-04, FR-05, BR-01, NFR-03 | Done |
 | View booking by PNR, booking history | FR-11, FR-12 | Not started |
 | Administration | FR-13, FR-14, FR-15 | Not started |
 | Role-based access control | SR-02 | Not started |
@@ -57,6 +57,10 @@ The database is a single SQLite file, `railway.db`, created in the project folde
   - dates.py : shared date parsing
   - search.py : train search and input validation
   - availability.py : seat availability
+  - booking.py : ticket booking and confirmation text
+  - pnr.py : PNR generation
+  - seats.py : seat allocation
+  - traveller_validation.py : passenger detail checks and the 6-passenger limit
   - cancellation.py : cancellation, 4-hour deadline and refund
   - registration.py, auth.py, security.py : registration, login and password hashing
 - tests/ : pytest unit and integration tests
