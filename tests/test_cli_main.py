@@ -2,7 +2,7 @@ from railway import storage
 from railway.cli import main
 
 
-def test_main_seeds_and_runs_the_menu(tmp_path):
+def test_main_seeds_and_runs_the_menu(tmp_path, fast_passwords):
     db = str(tmp_path / "railway.db")
     out = []
     main(["--db", db, "--seed"], ask=lambda prompt: "0", say=out.append)

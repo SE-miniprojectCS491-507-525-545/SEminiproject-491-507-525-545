@@ -11,7 +11,20 @@ CLI_NOW = datetime(2026, 10, 24, 10, 0)
 
 
 @pytest.fixture
-def cli_conn():
+def fast_passwords(monkeypatch):
+    """Swap the deliberately slow password hashing for a cheap stand-in.
+
+    Registration and login hash a password on every call, which takes a
+    noticeable fraction of a second each time. The CLI tests are about the menu
+    flow, not about hashing (that is covered by test_security.py and
+    test_auth.py), so they use this stand-in to keep the suite fast.
+    """
+    monkeypatch.setattr("railway.registration.hash_password", lambda p: "test$" + p)
+    monkeypatch.setattr("railway.auth.verify_password", lambda p, h: h == "test$" + p)
+
+
+@pytest.fixture
+def cli_conn(fast_passwords):
     """In-memory database with the demo trains and the demo account."""
     conn = storage.connect(":memory:")
     seed_demo_data(conn)
