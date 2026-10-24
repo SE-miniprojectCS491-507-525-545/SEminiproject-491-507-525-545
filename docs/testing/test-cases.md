@@ -22,12 +22,14 @@
 | TC-SEARCH-014 | NFR-01 | Measure search response time | Valid search on an integrated build | Results returned within 5 seconds under normal conditions | H | NOT EXECUTED |
 | TC-AVAIL-001 | FR-02 | Show seat counts by class | Valid train/date; availability module implemented | Available seats are shown per class | H | PASS |
 | TC-AVAIL-002 | FR-02 | Handle a full class | Selected class has zero seats | Class is reported as sold out (0 free seats). There is no waiting list (deviation log #9) | H | PASS |
-| TC-BOOK-001 | FR-04 | Book when seats are available | Valid passenger details and available class | Booking succeeds and a unique PNR is displayed | H | PLANNED |
-| TC-BOOK-002 | FR-04 | Update availability after booking | Book two seats | Available count decreases by two | H | PLANNED |
-| TC-BOOK-003 | FR-05 | Reject empty passenger name | Name = empty string | Booking is rejected with a field-specific error | M | PLANNED |
-| TC-BOOK-004 | FR-05 | Reject invalid passenger age | Age = 0 or 121 | Booking is rejected with an age validation error | M | PLANNED |
-| TC-BOOK-005 | BR-01 | Reject more than six passengers | Seven passengers in one booking | Booking is rejected; maximum remains six | H | PLANNED |
-| TC-BOOK-006 | NFR-03 | Two users attempt to book the final seat | Two simultaneous requests; one seat remaining | Exactly one booking succeeds; the other receives no-seat response | H | PLANNED |
+| TC-BOOK-001 | FR-04 | Book when seats are available | Valid passenger details and available class | Booking succeeds and a unique PNR is returned (confirmation text; no screen yet) | H | PASS |
+| TC-BOOK-002 | FR-04 | Update availability after booking | Book two seats | Available count decreases by two | H | PASS |
+| TC-BOOK-003 | FR-05 | Reject empty passenger name | Name = empty string | Booking is rejected with a field-specific error | M | PASS |
+| TC-BOOK-004 | FR-05 | Reject invalid passenger age | Age = 0 or 121 | Booking is rejected with an age validation error | M | PASS |
+| TC-BOOK-005 | BR-01 | Reject more than six passengers | Seven passengers in one booking | Booking is rejected; maximum remains six | H | PASS |
+| TC-BOOK-006 | NFR-03 | Two users attempt to book the final seat | Two simultaneous requests; one seat remaining | Exactly one booking succeeds; the other receives no-seat response | H | PASS |
+| TC-BOOK-007 | FR-04 | PNR is a unique 10-digit number | Several bookings in a row; a PNR that is already used | Every PNR has 10 digits, does not start with 0, and is different from all others | H | PASS |
+| TC-BOOK-008 | FR-04 | Seats are allocated and reused | Book two seats, then book again; cancel and book again | Lowest free seat numbers are given; cancelled seats are given out again; no seat is held twice | H | PASS |
 | TC-CAN-001 | FR-06 | Cancel an active booking | Valid active PNR, at least four hours before departure | Booking is cancelled and seats are released | H | PASS |
 | TC-CAN-002 | FR-08 | Reject an unknown PNR | Invalid/unknown PNR | Clear invalid-PNR error appears | H | PASS |
 | TC-CAN-003 | FR-08 | Reject a second cancellation | PNR already cancelled | Repeated cancellation is rejected | H | PASS |
@@ -58,4 +60,4 @@
 | TC-ADM-005 | FR-15 | Admin views all bookings | Admin session | All bookings are listed | M | PLANNED |
 | TC-ADM-006 | FR-15 | Admin filters bookings | Filter by train, date or PNR | Only matching bookings are shown | M | PLANNED |
 
-**Note:** Search, availability, cancellation, refund, registration, login and password-hashing cases are marked PASS because automated tests cover them and pass. The test names in `tests/` do not carry these IDs, so the link between a case and its test is made here. Booking, administration, access-control and screen-based cases stay PLANNED until the features exist and have been run. The refund slabs in BR-02 are fixed in `docs/requirements.md` and recorded in the deviation log.
+**Note:** Search, availability, booking, PNR, seat-allocation, traveller-check, cancellation, refund, registration, login and password-hashing cases are marked PASS because automated tests cover them and pass. The test names in `tests/` do not carry these IDs, so the link between a case and its test is made here. View-booking, administration, access-control and screen-based cases stay PLANNED until the features exist and have been run. The refund slabs in BR-02 are fixed in `docs/requirements.md` and recorded in the deviation log.

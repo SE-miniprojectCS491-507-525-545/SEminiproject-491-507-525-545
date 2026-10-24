@@ -11,7 +11,8 @@ from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
 
-from railway.models import CANCELLED, Booking, Passenger, SeatClass, Traveller, Train
+from railway.models import CANCELLED, CONFIRMED, Booking, Passenger, SeatClass, Traveller, Train
+from railway.seats import SeatAllocationError, allocate_seats
 
 # Always the project folder, no matter where the program is started from.
 # Set the RAILWAY_DB environment variable to use a different file.
@@ -89,6 +90,14 @@ CREATE TABLE IF NOT EXISTS seat_allocations (
 
 class StorageError(ValueError):
     """Raised when data cannot be saved (duplicate, unknown reference, bad value)."""
+
+
+class NotEnoughSeats(StorageError):
+    """Raised when a booking asks for more seats than are free. `free` is how many are."""
+
+    def __init__(self, message, free):
+        super().__init__(message)
+        self.free = free
 
 
 # ---------------------------------------------------------------- helpers
@@ -362,3 +371,71 @@ def apply_cancellation(conn, pnr):
         )
         conn.execute("DELETE FROM seat_allocations WHERE pnr = ?", (pnr,))
     return row["passengers"]
+
+
+# ---------------------------------------------------------------- booking
+
+def book_seats(conn, pnr, passenger_email, train_number, travel_date, seat_class,
+               travellers):
+    """Book seats in ONE all-or-nothing step (FR-04, NFR-03, NFR-04).
+
+    Inside a single transaction it checks the free seats, picks the seat
+    numbers, lowers the free-seat count, and saves the booking, its travellers
+    and its seat numbers. The write lock is taken first, so two people booking
+    the last seat at the same time cannot both succeed.
+    Returns (Booking, seat_numbers).
+    """
+    day = _iso(travel_date)
+    count = len(travellers)
+    with _write(conn, f"booking {pnr}"):
+        if not conn.in_transaction:
+            conn.execute("BEGIN IMMEDIATE")
+        cls = conn.execute(
+            "SELECT total_seats, fare FROM seat_classes "
+            "WHERE train_number = ? AND seat_class = ?",
+            (train_number, seat_class),
+        ).fetchone()
+        if cls is None:
+            raise StorageError(f"Class {seat_class} not found on train {train_number}.")
+        row = conn.execute(
+            "SELECT free_seats FROM availability "
+            "WHERE train_number = ? AND travel_date = ? AND seat_class = ?",
+            (train_number, day, seat_class),
+        ).fetchone()
+        free = cls["total_seats"] if row is None else row["free_seats"]
+        if count > free:
+            raise NotEnoughSeats(f"Only {free} seat(s) are free.", free)
+
+        taken = [r["seat_number"] for r in conn.execute(
+            "SELECT seat_number FROM seat_allocations "
+            "WHERE train_number = ? AND travel_date = ? AND seat_class = ?",
+            (train_number, day, seat_class))]
+        try:
+            seats = allocate_seats(taken, cls["total_seats"], count)
+        except SeatAllocationError as exc:
+            raise StorageError(str(exc)) from exc
+
+        fare = round(cls["fare"] * count, 2)
+        conn.execute(
+            "INSERT INTO availability VALUES (?, ?, ?, ?) "
+            "ON CONFLICT(train_number, travel_date, seat_class) "
+            "DO UPDATE SET free_seats = excluded.free_seats",
+            (train_number, day, seat_class, free - count),
+        )
+        conn.execute(
+            "INSERT INTO bookings VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (pnr, passenger_email, train_number, day, seat_class, count, fare, CONFIRMED),
+        )
+        for t in travellers:
+            conn.execute(
+                "INSERT INTO travellers (pnr, name, age, gender) VALUES (?, ?, ?, ?)",
+                (pnr, t.name, t.age, t.gender),
+            )
+        for number in seats:
+            conn.execute(
+                "INSERT INTO seat_allocations VALUES (?, ?, ?, ?, ?)",
+                (pnr, train_number, day, seat_class, number),
+            )
+    booking = Booking(pnr, passenger_email, train_number, date.fromisoformat(day),
+                      seat_class, count, fare, CONFIRMED)
+    return booking, seats

@@ -340,3 +340,32 @@ def test_failure_part_way_leaves_nothing_changed(seeded):
     assert storage.get_booking(seeded, "PNR1001").status == "CONFIRMED"
     assert storage.get_availability(seeded, "12627", TRAVEL, "3AC") == 10
     assert storage.get_seat_numbers(seeded, "PNR1001") == [14]
+
+
+# --- book_seats (FR-04) edge cases ---
+
+def test_book_seats_refuses_an_unknown_class(seeded):
+    with pytest.raises(StorageError, match="not found"):
+        storage.book_seats(seeded, "P1", "a@x.com", "12627", TRAVEL, "XX",
+                           [Traveller("A", 30, "F")])
+
+
+def test_book_seats_refuses_when_seat_numbers_do_not_match_the_free_count(seeded):
+    storage.add_train(seeded, Train("11111", "Tiny", "X", "Y", "08:00", (0,)),
+                      [SeatClass("11111", "FC", 1, 100.0)])
+    storage.add_booking(seeded, make_booking("PNR1001", train_number="11111",
+                                             seat_class="FC", passengers=1))
+    storage.add_seat_allocation(seeded, "PNR1001", "11111", TRAVEL, "FC", 1)
+    storage.set_availability(seeded, "11111", TRAVEL, "FC", 1)   # wrongly says 1 free
+    with pytest.raises(StorageError, match="can be allocated"):
+        storage.book_seats(seeded, "PNR2002", "a@x.com", "11111", TRAVEL, "FC",
+                           [Traveller("A", 30, "F")])
+    assert storage.get_booking(seeded, "PNR2002") is None
+
+
+def test_book_seats_works_inside_a_transaction_that_is_already_open(seeded):
+    seeded.execute("INSERT INTO passengers VALUES ('c@x.com', 'C', 'h', 'passenger')")
+    assert seeded.in_transaction
+    booking, seats = storage.book_seats(seeded, "PNR3003", "c@x.com", "12627", TRAVEL,
+                                        "3AC", [Traveller("C", 40, "M")])
+    assert seats == [1] and storage.get_booking(seeded, "PNR3003") == booking
