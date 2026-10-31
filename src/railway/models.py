@@ -68,3 +68,4 @@ class Booking:
     passengers: int
     fare: float
     status: str = CONFIRMED
+    departure_at_booking: str | None = None
