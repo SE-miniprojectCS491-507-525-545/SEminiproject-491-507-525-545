@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     passengers      INTEGER NOT NULL CHECK (passengers BETWEEN 1 AND 6),
     fare            REAL NOT NULL CHECK (fare >= 0),
     status          TEXT NOT NULL CHECK (status IN ('CONFIRMED', 'CANCELLED')),
+    departure_at_booking TEXT,
     FOREIGN KEY (train_number, seat_class)
         REFERENCES seat_classes(train_number, seat_class)
 );
@@ -127,8 +128,37 @@ def _write(conn, what):
 # ------------------------------------------------------------- connection
 
 def init_db(conn):
-    """Create all tables if they do not exist yet."""
+    """Create tables and apply small schema migrations."""
     conn.executescript(SCHEMA)
+
+    columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(trains)")
+    }
+    if "is_active" not in columns:
+        conn.execute(
+            "ALTER TABLE trains ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1"
+        )
+
+    booking_columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(bookings)")
+    }
+    if "departure_at_booking" not in booking_columns:
+        conn.execute(
+            "ALTER TABLE bookings ADD COLUMN departure_at_booking TEXT"
+        )
+
+        # Backfill existing bookings only during the migration.
+        conn.execute("""
+            UPDATE bookings
+            SET departure_at_booking = (
+                SELECT departure FROM trains
+                WHERE trains.number = bookings.train_number
+            )
+            WHERE departure_at_booking IS NULL
+        """)
+
+    # Remove the old trigger so generic bookings remain unchanged.
+    conn.execute("DROP TRIGGER IF EXISTS capture_booking_departure")
 
 
 def connect(path=None):
@@ -149,7 +179,7 @@ def add_train(conn, train, seat_classes=()):
     """Save a train and its seat classes together (all or nothing)."""
     with _write(conn, f"train {train.number}"):
         conn.execute(
-            "INSERT INTO trains VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO trains (number, name, source, destination, departure, runs_on) VALUES (?, ?, ?, ?, ?, ?)",
             (train.number, train.name, train.source, train.destination,
              train.departure, _encode_days(train.runs_on)),
         )
@@ -160,18 +190,70 @@ def add_train(conn, train, seat_classes=()):
             )
 
 
+def update_train(conn, train):
+    """Update the details of an existing train."""
+    with _write(conn, f"train {train.number}"):
+        cur = conn.execute(
+            """
+            UPDATE trains
+            SET name = ?, source = ?, destination = ?,
+                departure = ?, runs_on = ?
+            WHERE number = ?
+            """,
+            (
+                train.name, train.source, train.destination,
+                train.departure, _encode_days(train.runs_on),
+                train.number,
+            ),
+        )
+        if cur.rowcount == 0:
+            raise StorageError(f"Train {train.number} not found.")
+
+
+def remove_train(conn, number):
+    """Remove a train only when it has no confirmed bookings."""
+    with _write(conn, f"removal of train {number}"):
+        row = conn.execute(
+            "SELECT number FROM trains WHERE number = ? AND is_active = 1",
+            (number,),
+        ).fetchone()
+        if row is None:
+            raise StorageError(f"Train {number} not found.")
+
+        active = conn.execute(
+            "SELECT COUNT(*) FROM bookings "
+            "WHERE train_number = ? AND status = ?",
+            (number, CONFIRMED),
+        ).fetchone()[0]
+
+        if active:
+            raise StorageError(
+                f"Train {number} cannot be removed because it has active bookings."
+            )
+
+        conn.execute(
+            "UPDATE trains SET is_active = 0 WHERE number = ?",
+            (number,),
+        )
+
+
 def _train_from_row(row):
     return Train(row["number"], row["name"], row["source"], row["destination"],
                  row["departure"], _decode_days(row["runs_on"]))
 
 
 def get_train(conn, number):
-    row = conn.execute("SELECT * FROM trains WHERE number = ?", (number,)).fetchone()
+    row = conn.execute(
+        "SELECT * FROM trains WHERE number = ? AND is_active = 1",
+        (number,),
+    ).fetchone()
     return _train_from_row(row) if row else None
 
 
 def list_trains(conn):
-    rows = conn.execute("SELECT * FROM trains ORDER BY number").fetchall()
+    rows = conn.execute(
+        "SELECT * FROM trains WHERE is_active = 1 ORDER BY number"
+    ).fetchall()
     return [_train_from_row(r) for r in rows]
 
 
@@ -254,7 +336,9 @@ def add_booking(conn, booking, travellers=()):
     """Save a booking and its travellers together (all or nothing)."""
     with _write(conn, f"booking {booking.pnr}"):
         conn.execute(
-            "INSERT INTO bookings VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO bookings "
+            "(pnr, passenger_email, train_number, travel_date, seat_class, "
+            "passengers, fare, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (booking.pnr, booking.passenger_email, booking.train_number,
              _iso(booking.travel_date), booking.seat_class, booking.passengers,
              booking.fare, booking.status),
@@ -269,7 +353,8 @@ def add_booking(conn, booking, travellers=()):
 def _booking_from_row(row):
     return Booking(row["pnr"], row["passenger_email"], row["train_number"],
                    date.fromisoformat(row["travel_date"]), row["seat_class"],
-                   row["passengers"], row["fare"], row["status"])
+                   row["passengers"], row["fare"], row["status"],
+                   row["departure_at_booking"])
 
 
 def get_booking(conn, pnr):
@@ -390,6 +475,15 @@ def book_seats(conn, pnr, passenger_email, train_number, travel_date, seat_class
     with _write(conn, f"booking {pnr}"):
         if not conn.in_transaction:
             conn.execute("BEGIN IMMEDIATE")
+        train_row = conn.execute(
+            "SELECT departure FROM trains WHERE number = ? AND is_active = 1",
+            (train_number,),
+        ).fetchone()
+        if train_row is None:
+            raise StorageError(f"Train {train_number} not found.")
+
+        departure_at_booking = train_row["departure"]
+
         cls = conn.execute(
             "SELECT total_seats, fare FROM seat_classes "
             "WHERE train_number = ? AND seat_class = ?",
@@ -423,8 +517,12 @@ def book_seats(conn, pnr, passenger_email, train_number, travel_date, seat_class
             (train_number, day, seat_class, free - count),
         )
         conn.execute(
-            "INSERT INTO bookings VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (pnr, passenger_email, train_number, day, seat_class, count, fare, CONFIRMED),
+            "INSERT INTO bookings "
+            "(pnr, passenger_email, train_number, travel_date, seat_class, "
+            "passengers, fare, status, departure_at_booking) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (pnr, passenger_email, train_number, day, seat_class, count,
+             fare, CONFIRMED, departure_at_booking),
         )
         for t in travellers:
             conn.execute(
@@ -437,5 +535,5 @@ def book_seats(conn, pnr, passenger_email, train_number, travel_date, seat_class
                 (pnr, train_number, day, seat_class, number),
             )
     booking = Booking(pnr, passenger_email, train_number, date.fromisoformat(day),
-                      seat_class, count, fare, CONFIRMED)
+                      seat_class, count, fare, CONFIRMED, departure_at_booking)
     return booking, seats

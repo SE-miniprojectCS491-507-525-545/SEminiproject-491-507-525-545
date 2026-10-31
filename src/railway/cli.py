@@ -43,6 +43,8 @@ MENU = """
  3. Logout            8. View booking by PNR
  4. Search trains     9. Cancel booking
  5. Check seats      10. Admin: Add train
+11. Admin: Update train
+12. Admin: Remove train
  0. Exit
 """
 
@@ -90,6 +92,8 @@ class App:
             "8": self.view_booking,
             "9": self.cancel,
             "10": self.add_train,
+            "11": self.update_train,
+            "12": self.remove_train,
         }
 
     # ------------------------------------------------------------ main loop
@@ -287,6 +291,82 @@ class App:
             )
 
     # ---------------------------------------------------------- FR-13 admin
+
+    def update_train(self):
+        try:
+            self._require_admin()
+            number = self.ask("Train number to update: ").strip()
+            train = storage.get_train(self.conn, number)
+
+            if train is None:
+                self.say("Train not found.")
+                return
+
+            self.say("Press Enter to keep the current value.")
+            name = self.ask(f"Train name [{train.name}]: ").strip() or train.name
+            source = self.ask(f"Source [{train.source}]: ").strip() or train.source
+            destination = self.ask(
+                f"Destination [{train.destination}]: "
+            ).strip() or train.destination
+            departure = self.ask(
+                f"Departure time [{train.departure}]: "
+            ).strip() or train.departure
+
+            current_days = ",".join(str(d) for d in train.runs_on)
+            days_input = self.ask(
+                f"Running days (0=Mon ... 6=Sun) [{current_days}]: "
+            ).strip()
+
+            days = (
+                tuple(sorted(set(int(d.strip()) for d in days_input.split(","))))
+                if days_input else train.runs_on
+            )
+
+            if not name or not source or not destination:
+                self.say("Name, source and destination cannot be empty.")
+                return
+            if source.lower() == destination.lower():
+                self.say("Source and destination must be different.")
+                return
+            if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", departure):
+                self.say("Invalid departure time. Use HH:MM.")
+                return
+            if not days or any(day < 0 or day > 6 for day in days):
+                self.say("Invalid running days. Enter values from 0 to 6.")
+                return
+
+            updated = Train(
+                train.number, name, source, destination, departure, days
+            )
+            storage.update_train(self.conn, updated)
+            self.say(f"Train {number} updated successfully.")
+
+        except (ValueError, TypeError) as exc:
+            self.say(f"Could not update train: {exc}")
+
+    def remove_train(self):
+        try:
+            self._require_admin()
+            number = self.ask("Train number to remove: ").strip()
+            train = storage.get_train(self.conn, number)
+
+            if train is None:
+                self.say("Train not found.")
+                return
+
+            confirm = self.ask(
+                f"Remove {train.name} ({number})? Type Y to confirm: "
+            ).strip().upper()
+
+            if confirm != "Y":
+                self.say("Removal cancelled.")
+                return
+
+            storage.remove_train(self.conn, number)
+            self.say(f"Train {number} removed successfully.")
+
+        except ValueError as exc:
+            self.say(f"Could not remove train: {exc}")
 
     def add_train(self):
         """Add a train and its initial seat class. Admin only."""
