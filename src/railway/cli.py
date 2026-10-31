@@ -23,6 +23,7 @@ from railway.cancellation import (
 )
 from railway.demo_data import DEMO_EMAIL, DEMO_PASSWORD, seed_demo_data
 from railway.models import ROLE_ADMIN, SeatClass, Train, Traveller
+from railway.traveller_validation import TravellerError, validate_traveller
 from railway.registration import register_passenger
 from railway.search import search_trains, stations_of
 
@@ -432,7 +433,12 @@ class App:
                 f"Passenger {i} gender (M/F/O): "
             ).strip()
 
-            travellers.append(Traveller(name, age, gender))
+            # Check each passenger straight away so the error names them
+            # (FR-05) instead of failing after every detail was typed in.
+            try:
+                travellers.append(validate_traveller(Traveller(name, age, gender), i))
+            except TravellerError as exc:
+                raise ValueError(str(exc)) from None
 
         result = book_ticket(
             self.conn,
