@@ -166,3 +166,28 @@ def test_cannot_cancel_someone_elses_booking(run_cli, cli_conn):
     out = run_cli(LOGIN_DEMO + ["9", "PNR1001", "0"])
     assert "Error: No booking found for PNR PNR1001." in out
     assert storage.get_booking(cli_conn, "PNR1001").status == "CONFIRMED"
+
+
+def test_bad_name_of_second_passenger_is_reported_straight_away(run_cli):
+    calls = []
+    out = run_cli(LOGIN_DEMO + ["6", "12627", "2026-11-02", "SL", "2",
+                                "Asha Rao", "30", "F", "As@ha", "20", "M", "0"],
+                  book=lambda *a: calls.append(a))
+    assert "Error: Passenger 2: name can only contain letters" in out
+    assert calls == []          # nothing was booked
+
+
+def test_bad_gender_is_reported_with_passenger_number(run_cli):
+    out = run_cli(LOGIN_DEMO + ["6", "12627", "2026-11-02", "SL", "1",
+                                "Asha Rao", "30", "robot", "0"],
+                  book=lambda *a: None)
+    assert "Error: Passenger 1: gender must be M, F or O." in out
+
+
+def test_valid_passengers_are_passed_on_cleaned(run_cli):
+    calls = []
+    run_cli(LOGIN_DEMO + ["6", "12627", "2026-11-02", "SL", "1",
+                          "Asha   Rao ", "30", "female", "0"],
+            book=lambda *a: calls.append(a) or "PNR1")
+    travellers = calls[0][-1]
+    assert [(t.name, t.age, t.gender) for t in travellers] == [("Asha Rao", 30, "F")]
