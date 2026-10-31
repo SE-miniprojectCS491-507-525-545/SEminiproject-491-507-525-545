@@ -25,7 +25,13 @@ from railway.demo_data import DEMO_EMAIL, DEMO_PASSWORD, seed_demo_data
 from railway.models import ROLE_ADMIN, SeatClass, Train, Traveller
 from railway.traveller_validation import TravellerError, validate_traveller
 from railway.registration import register_passenger
-from railway.search import search_trains, stations_of
+from railway.search import SearchError, search_trains, stations_of
+from railway.search_help import (
+    DATE_PROMPT,
+    friendly_date,
+    no_results_hint,
+    unknown_station_hint,
+)
 
 
 MAX_PASSENGERS = 6  # BR-01
@@ -134,17 +140,7 @@ class App:
         return passenger
 
     def _ask_date(self, prompt):
-        text = self.ask(prompt).strip()
-
-        if not text:
-            raise ValueError("Travel date is required.")
-
-        try:
-            return date.fromisoformat(text)
-        except ValueError:
-            raise ValueError(
-                "Travel date must be in YYYY-MM-DD format."
-            ) from None
+        return friendly_date(self.ask(prompt), self.today)
 
     def _ask_int(self, prompt, label):
         try:
@@ -213,22 +209,45 @@ class App:
     # ----------------------------------------------------- search and seats
 
     def search(self):
+        trains = storage.list_trains(self.conn)
+        stations = stations_of(trains)
+
+        if stations:
+            self.say("Stations: " + ", ".join(stations))
+            self.say("(Station names are not case-sensitive.)")
+
         source = self.ask("From: ")
         destination = self.ask("To: ")
-        day = self._ask_date("Travel date (YYYY-MM-DD): ")
+        day = self._ask_date(DATE_PROMPT)
 
-        trains = storage.list_trains(self.conn)
-        found = search_trains(
-            source,
-            destination,
-            day,
-            trains,
-            stations_of(trains),
-            today=self.today,
-        )
+        try:
+            found = search_trains(
+                source,
+                destination,
+                day,
+                trains,
+                stations,
+                today=self.today,
+            )
+        except SearchError as err:
+            message = str(err)
+
+            if message.startswith("Unknown station"):
+                known = {name.lower() for name in stations}
+                unknown = next(
+                    (
+                        typed for typed in (source, destination)
+                        if typed.strip().lower() not in known
+                    ),
+                    source,
+                )
+                message += " " + unknown_station_hint(unknown, stations)
+
+            raise ValueError(message) from None
 
         if not found:
             self.say("No trains found for that route and date.")
+            self.say(no_results_hint(trains, source, destination))
             return
 
         self.say(
@@ -243,9 +262,11 @@ class App:
             )
             self._print_classes(train.number, day)
 
+        self.say("\nTo book, choose option 6 and enter the train number above.")
+
     def check_seats(self):
         number = self.ask("Train number: ").strip()
-        day = self._ask_date("Travel date (YYYY-MM-DD): ")
+        day = self._ask_date(DATE_PROMPT)
         self._print_classes(number, day)
 
     def _print_classes(self, train_number, day):
@@ -407,7 +428,7 @@ class App:
             return
 
         train_number = self.ask("Train number: ").strip()
-        day = self._ask_date("Travel date (YYYY-MM-DD): ")
+        day = self._ask_date(DATE_PROMPT)
         seat_class = self.ask(
             "Class (for example 3AC, SL): "
         ).strip().upper()
