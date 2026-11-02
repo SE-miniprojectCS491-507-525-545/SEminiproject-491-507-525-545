@@ -57,3 +57,25 @@ def test_at_least_one_passenger_is_needed(empty):
 def test_error_names_the_passenger_that_is_wrong():
     with pytest.raises(TravellerError, match=r"Passenger 2: name"):
         validate_travellers([person(), person(name="")])
+
+
+@pytest.mark.parametrize("name", ["Asha Rao", "D'Souza", "Anne-Marie", "J. R. Rao", "Ñandú Pérez", "பாலா"])
+def test_real_world_names_are_accepted(name):
+    assert validate_travellers([person(name=name)])[0].name == name
+
+
+@pytest.mark.parametrize("name", ["!!!", "@sha", "Asha_Rao", "123", "A", "-Asha", "x" * 51])
+def test_names_with_symbols_no_letters_or_bad_length_are_rejected(name):
+    with pytest.raises(TravellerError, match=r"Passenger 1: name"):
+        validate_travellers([person(name=name)])
+
+
+def test_extra_spaces_inside_a_name_are_collapsed():
+    assert validate_travellers([person(name="  Asha    Rao ")])[0].name == "Asha Rao"
+
+
+def test_validate_traveller_checks_one_person_and_uses_their_number():
+    from railway.traveller_validation import validate_traveller
+    assert validate_traveller(person(gender="f"), 3).gender == "F"
+    with pytest.raises(TravellerError, match=r"Passenger 3: age"):
+        validate_traveller(person(age=0), 3)

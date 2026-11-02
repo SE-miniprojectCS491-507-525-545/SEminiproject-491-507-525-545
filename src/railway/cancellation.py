@@ -91,8 +91,8 @@ def preview_refund(pnr, bookings, trains, now=None):
     """Show the refund before the cancellation is final (FR-07). Changes nothing."""
     booking = validate_cancellation(pnr, bookings)
     train = _find_train(booking, trains)
-    validate_deadline(booking.travel_date, train.departure, now)
-    return calculate_refund(booking.fare, booking.travel_date, train.departure, now)
+    validate_deadline(booking.travel_date, getattr(booking, "departure_at_booking", None) or train.departure, now)
+    return calculate_refund(booking.fare, booking.travel_date, getattr(booking, "departure_at_booking", None) or train.departure, now)
 
 
 def cancel_ticket(pnr, bookings, availability, trains, now=None):
@@ -103,8 +103,8 @@ def cancel_ticket(pnr, bookings, availability, trains, now=None):
     """
     booking = validate_cancellation(pnr, bookings)
     train = _find_train(booking, trains)
-    validate_deadline(booking.travel_date, train.departure, now)
-    refund = calculate_refund(booking.fare, booking.travel_date, train.departure, now)
+    validate_deadline(booking.travel_date, getattr(booking, "departure_at_booking", None) or train.departure, now)
+    refund = calculate_refund(booking.fare, booking.travel_date, getattr(booking, "departure_at_booking", None) or train.departure, now)
 
     booking.status = CANCELLED
     key = (booking.train_number, booking.travel_date, booking.seat_class)
@@ -126,8 +126,8 @@ def cancel_booking(conn, pnr, now=None):
     train = storage.get_train(conn, booking.train_number)
     if train is None:
         raise CancellationError(f"Train {booking.train_number} not found.")
-    validate_deadline(booking.travel_date, train.departure, now)
-    refund = calculate_refund(booking.fare, booking.travel_date, train.departure, now)
+    validate_deadline(booking.travel_date, getattr(booking, "departure_at_booking", None) or train.departure, now)
+    refund = calculate_refund(booking.fare, booking.travel_date, getattr(booking, "departure_at_booking", None) or train.departure, now)
     try:
         released = storage.apply_cancellation(conn, pnr)
     except storage.StorageError as exc:

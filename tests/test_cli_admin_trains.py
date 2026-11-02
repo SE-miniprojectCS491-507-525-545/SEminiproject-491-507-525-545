@@ -1,6 +1,8 @@
 
 from railway import storage
-from railway.models import Passenger, ROLE_ADMIN
+from datetime import date
+
+from railway.models import Booking, CONFIRMED, Passenger, ROLE_ADMIN
 
 
 def add_admin(conn):
@@ -124,6 +126,80 @@ def test_logged_out_user_cannot_add_train(run_cli):
     output = run_cli([
         "10",
         "0",
+    ])
+
+    assert "Not logged in" in output or "login" in output.lower()
+
+
+# FR-14: Admin update and remove train
+
+def test_admin_can_update_train(cli_conn, run_cli):
+    add_admin(cli_conn)
+
+    output = run_cli([
+        "2", "admin@railway.com", "adminpass1",
+        "11", "12627",
+        "Updated Karnataka Express",
+        "", "", "10:15", "",
+        "0",
+    ])
+
+    updated = storage.get_train(cli_conn, "12627")
+    assert "updated successfully" in output.lower()
+    assert updated.name == "Updated Karnataka Express"
+    assert updated.departure == "10:15"
+
+
+def test_admin_can_remove_train_without_confirmed_bookings(cli_conn, run_cli):
+    add_admin(cli_conn)
+
+    output = run_cli([
+        "2", "admin@railway.com", "adminpass1",
+        "12", "12627", "Y",
+        "0",
+    ])
+
+    assert "removed successfully" in output.lower()
+    assert all(t.number != "12627" for t in storage.list_trains(cli_conn))
+
+
+def test_admin_cannot_remove_train_with_confirmed_booking(cli_conn):
+    booking = Booking(
+        "TESTPNR001",
+        "demo@railway.com",
+        "12627",
+        date(2026, 11, 2),
+        "SL",
+        1,
+        250.0,
+        CONFIRMED,
+    )
+    storage.add_booking(cli_conn, booking)
+
+    try:
+        storage.remove_train(cli_conn, "12627")
+        assert False, "Expected removal to be blocked"
+    except storage.StorageError as exc:
+        assert "active bookings" in str(exc).lower()
+
+    assert any(t.number == "12627" for t in storage.list_trains(cli_conn))
+
+
+def test_passenger_cannot_update_or_remove_train(cli_conn, run_cli):
+    output = run_cli([
+        "2", "demo@railway.com", "demo12345",
+        "11", "12627",
+        "12", "12627", "Y",
+        "0",
+    ])
+
+    assert output.count("Admin access required.") >= 2
+    assert any(t.number == "12627" for t in storage.list_trains(cli_conn))
+
+
+def test_logged_out_user_cannot_update_or_remove_train(run_cli):
+    output = run_cli([
+        "11", "12", "0",
     ])
 
     assert "Not logged in" in output or "login" in output.lower()

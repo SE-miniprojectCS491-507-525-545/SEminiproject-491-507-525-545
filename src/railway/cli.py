@@ -23,8 +23,15 @@ from railway.cancellation import (
 )
 from railway.demo_data import DEMO_EMAIL, DEMO_PASSWORD, seed_demo_data
 from railway.models import ROLE_ADMIN, SeatClass, Train, Traveller
+from railway.traveller_validation import TravellerError, validate_traveller
 from railway.registration import register_passenger
-from railway.search import search_trains, stations_of
+from railway.search import SearchError, search_trains, stations_of
+from railway.search_help import (
+    DATE_PROMPT,
+    friendly_date,
+    no_results_hint,
+    unknown_station_hint,
+)
 
 
 MAX_PASSENGERS = 6  # BR-01
@@ -36,6 +43,8 @@ MENU = """
  3. Logout            8. View booking by PNR
  4. Search trains     9. Cancel booking
  5. Check seats      10. Admin: Add train
+11. Admin: Update train
+12. Admin: Remove train
  0. Exit
 """
 
@@ -83,6 +92,8 @@ class App:
             "8": self.view_booking,
             "9": self.cancel,
             "10": self.add_train,
+            "11": self.update_train,
+            "12": self.remove_train,
         }
 
     # ------------------------------------------------------------ main loop
@@ -133,17 +144,7 @@ class App:
         return passenger
 
     def _ask_date(self, prompt):
-        text = self.ask(prompt).strip()
-
-        if not text:
-            raise ValueError("Travel date is required.")
-
-        try:
-            return date.fromisoformat(text)
-        except ValueError:
-            raise ValueError(
-                "Travel date must be in YYYY-MM-DD format."
-            ) from None
+        return friendly_date(self.ask(prompt), self.today)
 
     def _ask_int(self, prompt, label):
         try:
@@ -212,22 +213,45 @@ class App:
     # ----------------------------------------------------- search and seats
 
     def search(self):
+        trains = storage.list_trains(self.conn)
+        stations = stations_of(trains)
+
+        if stations:
+            self.say("Stations: " + ", ".join(stations))
+            self.say("(Station names are not case-sensitive.)")
+
         source = self.ask("From: ")
         destination = self.ask("To: ")
-        day = self._ask_date("Travel date (YYYY-MM-DD): ")
+        day = self._ask_date(DATE_PROMPT)
 
-        trains = storage.list_trains(self.conn)
-        found = search_trains(
-            source,
-            destination,
-            day,
-            trains,
-            stations_of(trains),
-            today=self.today,
-        )
+        try:
+            found = search_trains(
+                source,
+                destination,
+                day,
+                trains,
+                stations,
+                today=self.today,
+            )
+        except SearchError as err:
+            message = str(err)
+
+            if message.startswith("Unknown station"):
+                known = {name.lower() for name in stations}
+                unknown = next(
+                    (
+                        typed for typed in (source, destination)
+                        if typed.strip().lower() not in known
+                    ),
+                    source,
+                )
+                message += " " + unknown_station_hint(unknown, stations)
+
+            raise ValueError(message) from None
 
         if not found:
             self.say("No trains found for that route and date.")
+            self.say(no_results_hint(trains, source, destination))
             return
 
         self.say(
@@ -242,9 +266,11 @@ class App:
             )
             self._print_classes(train.number, day)
 
+        self.say("\nTo book, choose option 6 and enter the train number above.")
+
     def check_seats(self):
         number = self.ask("Train number: ").strip()
-        day = self._ask_date("Travel date (YYYY-MM-DD): ")
+        day = self._ask_date(DATE_PROMPT)
         self._print_classes(number, day)
 
     def _print_classes(self, train_number, day):
@@ -265,6 +291,82 @@ class App:
             )
 
     # ---------------------------------------------------------- FR-13 admin
+
+    def update_train(self):
+        try:
+            self._require_admin()
+            number = self.ask("Train number to update: ").strip()
+            train = storage.get_train(self.conn, number)
+
+            if train is None:
+                self.say("Train not found.")
+                return
+
+            self.say("Press Enter to keep the current value.")
+            name = self.ask(f"Train name [{train.name}]: ").strip() or train.name
+            source = self.ask(f"Source [{train.source}]: ").strip() or train.source
+            destination = self.ask(
+                f"Destination [{train.destination}]: "
+            ).strip() or train.destination
+            departure = self.ask(
+                f"Departure time [{train.departure}]: "
+            ).strip() or train.departure
+
+            current_days = ",".join(str(d) for d in train.runs_on)
+            days_input = self.ask(
+                f"Running days (0=Mon ... 6=Sun) [{current_days}]: "
+            ).strip()
+
+            days = (
+                tuple(sorted(set(int(d.strip()) for d in days_input.split(","))))
+                if days_input else train.runs_on
+            )
+
+            if not name or not source or not destination:
+                self.say("Name, source and destination cannot be empty.")
+                return
+            if source.lower() == destination.lower():
+                self.say("Source and destination must be different.")
+                return
+            if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", departure):
+                self.say("Invalid departure time. Use HH:MM.")
+                return
+            if not days or any(day < 0 or day > 6 for day in days):
+                self.say("Invalid running days. Enter values from 0 to 6.")
+                return
+
+            updated = Train(
+                train.number, name, source, destination, departure, days
+            )
+            storage.update_train(self.conn, updated)
+            self.say(f"Train {number} updated successfully.")
+
+        except (ValueError, TypeError) as exc:
+            self.say(f"Could not update train: {exc}")
+
+    def remove_train(self):
+        try:
+            self._require_admin()
+            number = self.ask("Train number to remove: ").strip()
+            train = storage.get_train(self.conn, number)
+
+            if train is None:
+                self.say("Train not found.")
+                return
+
+            confirm = self.ask(
+                f"Remove {train.name} ({number})? Type Y to confirm: "
+            ).strip().upper()
+
+            if confirm != "Y":
+                self.say("Removal cancelled.")
+                return
+
+            storage.remove_train(self.conn, number)
+            self.say(f"Train {number} removed successfully.")
+
+        except ValueError as exc:
+            self.say(f"Could not remove train: {exc}")
 
     def add_train(self):
         """Add a train and its initial seat class. Admin only."""
@@ -406,7 +508,7 @@ class App:
             return
 
         train_number = self.ask("Train number: ").strip()
-        day = self._ask_date("Travel date (YYYY-MM-DD): ")
+        day = self._ask_date(DATE_PROMPT)
         seat_class = self.ask(
             "Class (for example 3AC, SL): "
         ).strip().upper()
@@ -432,7 +534,12 @@ class App:
                 f"Passenger {i} gender (M/F/O): "
             ).strip()
 
-            travellers.append(Traveller(name, age, gender))
+            # Check each passenger straight away so the error names them
+            # (FR-05) instead of failing after every detail was typed in.
+            try:
+                travellers.append(validate_traveller(Traveller(name, age, gender), i))
+            except TravellerError as exc:
+                raise ValueError(str(exc)) from None
 
         result = book_ticket(
             self.conn,
