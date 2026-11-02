@@ -5,6 +5,9 @@ stations) and time the same steps the CLI runs for option 4: load the trains,
 validate and search, then look up seat availability for every result.
 The limit asserted is the real requirement (5 s), so they only fail on a
 genuine slowdown, not on a slightly slow laptop.
+
+Trains are added through storage.add_train (the app's own function), so this
+test keeps working even if the trains table gets new columns.
 """
 from datetime import date
 
@@ -12,12 +15,13 @@ import pytest
 
 from railway import storage
 from railway.availability import list_availability
+from railway.models import SeatClass, Train
 from railway.perf import SEARCH_TIME_LIMIT_SECONDS, timed, within_limit
 from railway.search import search_trains, stations_of
 
 TODAY = date(2026, 10, 24)
 TRAVEL_DAY = date(2026, 11, 2)
-ALL_DAYS = "0,1,2,3,4,5,6"
+ALL_DAYS = tuple(range(7))
 STATIONS = [f"City{i}" for i in range(200)]
 TRAIN_COUNT = 20_000
 BUSY_ROUTE = ("City3", "City24")
@@ -25,7 +29,6 @@ BUSY_ROUTE_TRAINS = 300          # many trains on ONE route -> many results to p
 
 
 def _fill(conn):
-    rows, classes = [], []
     for i in range(TRAIN_COUNT):
         src = STATIONS[i % 200]
         dst = STATIONS[(i * 7 + 3) % 200]
@@ -34,18 +37,24 @@ def _fill(conn):
         if i < BUSY_ROUTE_TRAINS:
             src, dst = BUSY_ROUTE
         number = f"T{i:05d}"
-        rows.append((number, f"Train {i}", src, dst, "10:00", ALL_DAYS))
-        classes.append((number, "SL", 100, 500.0))
-        classes.append((number, "3AC", 50, 1200.0))
-    with conn:
-        conn.executemany("INSERT INTO trains VALUES (?,?,?,?,?,?)", rows)
-        conn.executemany("INSERT INTO seat_classes VALUES (?,?,?,?)", classes)
+        train = Train(
+            number=number,
+            name=f"Train {i}",
+            source=src,
+            destination=dst,
+            departure="10:00",
+            runs_on=ALL_DAYS,
+        )
+        classes = [
+            SeatClass(train_number=number, seat_class="SL", total_seats=100, fare=500.0),
+            SeatClass(train_number=number, seat_class="3AC", total_seats=50, fare=1200.0),
+        ]
+        storage.add_train(conn, train, classes)
 
 
 @pytest.fixture(scope="module")
-def big_conn(tmp_path_factory):
-    path = tmp_path_factory.mktemp("perf") / "big.db"      # a real file, like production
-    conn = storage.connect(str(path))
+def big_conn():
+    conn = storage.connect(":memory:")     # in memory so building 20,000 trains is quick
     _fill(conn)
     yield conn
     conn.close()
