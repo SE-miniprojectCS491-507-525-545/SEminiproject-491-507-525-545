@@ -429,6 +429,11 @@ def apply_cancellation(conn, pnr):
     the class capacity. Returns the number of seats released.
     """
     with _write(conn, f"cancellation of booking {pnr}"):
+        if not conn.in_transaction:
+            # Take the write lock BEFORE reading the seat count. Otherwise two
+            # cancellations at once both read the same old count and one of
+            # them overwrites the other's update, so seats go missing.
+            conn.execute("BEGIN IMMEDIATE")
         row = conn.execute("SELECT * FROM bookings WHERE pnr = ?", (pnr,)).fetchone()
         if row is None:
             raise StorageError(f"No booking found for PNR {pnr}.")

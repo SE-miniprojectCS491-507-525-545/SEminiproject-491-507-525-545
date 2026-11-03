@@ -40,6 +40,11 @@
 | TC-DATA-001 | NFR-04 | Reuse a seat immediately after cancellation | Cancel a booking, then query availability/book | Newly released seat is visible to the next request | H | PASS |
 | TC-USE-001 | NFR-02 | First-time passenger completes search | Usable search interface available | User can complete a search without external help and understand errors | M | PLANNED |
 | TC-DATA-002 | NFR-05 | Data survives a restart | Save a train and availability, close and reopen the database | Data is still present (storage layer) | H | PASS |
+| TC-DATA-003 | NFR-04 | A cancelled seat is visible to the next request | A second connection that is already open checks availability and then books, after the cancellation | The restored seat count is seen at once, with no reopening or waiting, and the seat can be booked | H | PASS |
+| TC-DATA-004 | NFR-04 | Seat counts and seat numbers agree through a long history | 200 random bookings and cancellations | The consistency check finds no problem after any step | H | PASS |
+| TC-DATA-005 | NFR-04 | The consistency check detects bad data | Wrong free count; missing availability row; missing or leftover seat numbers; seat number too high | Each problem is reported with a clear message | M | PASS |
+| TC-DATA-006 | NFR-04 | Several cancellations at the same moment | Two cancellations that overlap; four cancellations at once | Every cancelled seat is counted as free and no seat is lost | H | PASS |
+| TC-DATA-007 | NFR-04 | Booking and cancelling at the same moment | Two cancellations and four bookings at once on a full class | Counts and seat numbers agree and no seat is held twice | H | PASS |
 | TC-REG-001 | FR-09 | Register with valid details | Name, unique email, password of 8+ characters with a letter and a digit | Account is created | H | PASS |
 | TC-REG-002 | FR-09 | Reject invalid registration input | Empty name, bad email, short or letter-only password | Rejected with a clear message; nothing is stored | H | PASS |
 | TC-REG-003 | FR-09 | Reject a duplicate email | Email already registered, including in a different letter case | Registration is rejected | H | PASS |
