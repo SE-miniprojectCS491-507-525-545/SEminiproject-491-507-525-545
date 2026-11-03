@@ -30,6 +30,9 @@
 | TC-BOOK-006 | NFR-03 | Two users attempt to book the final seat | Two simultaneous requests; one seat remaining | Exactly one booking succeeds; the other receives no-seat response | H | PASS |
 | TC-BOOK-007 | FR-04 | PNR is a unique 10-digit number | Several bookings in a row; a PNR that is already used | Every PNR has 10 digits, does not start with 0, and is different from all others | H | PASS |
 | TC-BOOK-008 | FR-04 | Seats are allocated and reused | Book two seats, then book again; cancel and book again | Lowest free seat numbers are given; cancelled seats are given out again; no seat is held twice | H | PASS |
+| TC-BOOK-009 | NFR-03 | Many people book a small class at the same time | 12 simultaneous bookings for a class with 5 seats | Exactly 5 succeed and get seats 1 to 5, each once; the other 7 get "No seats available"; free seats end at 0 | H | PASS |
+| TC-BOOK-010 | NFR-03 | Bookings of different sizes compete for seats | 10 simultaneous bookings of 2 seats for 12 seats; 3 bookings of 4 seats for 6 seats | Only the bookings that fit succeed; no seat number is held twice; the free count matches the seats held | H | PASS |
+| TC-BOOK-011 | NFR-03 | A booking that starts while another is in progress waits for it | One booking holds the database while a second booking for the last seat starts | The second booking waits, then gets "No seats available"; the seat is held by one booking only | H | PASS |
 | TC-CAN-001 | FR-06 | Cancel an active booking | Valid active PNR, at least four hours before departure | Booking is cancelled and seats are released | H | PASS |
 | TC-CAN-002 | FR-08 | Reject an unknown PNR | Invalid/unknown PNR | Clear invalid-PNR error appears | H | PASS |
 | TC-CAN-003 | FR-08 | Reject a second cancellation | PNR already cancelled | Repeated cancellation is rejected | H | PASS |
