@@ -11,9 +11,9 @@ from railway.registration import register_passenger
 EVERY_DAY = tuple(range(7))
 
 DEMO_EMAIL = "demo@railway.com"
-DEMO_PASSWORD = "demo12345"
+DEMO_PASSWORD = "demo12345"  # nosec B105 - public local-demo credential only
 DEMO_ADMIN_EMAIL = "admin@railway.com"
-DEMO_ADMIN_PASSWORD = "Admin12345"
+DEMO_ADMIN_PASSWORD = "Admin12345"  # nosec B105 - public local-demo credential only
 
 _TRAINS = [
     (Train("12627", "Karnataka Express", "Bengaluru", "Delhi", "19:20", EVERY_DAY),

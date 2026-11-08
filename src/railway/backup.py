@@ -11,7 +11,7 @@ class BackupError(ValueError):
 
 def _validate_database(path):
     try:
-        with sqlite3.connect(f"file:{Path(path).resolve()}?mode=ro", uri=True) as conn:
+        with sqlite3.connect(f"{Path(path).resolve().as_uri()}?mode=ro", uri=True) as conn:
             result = conn.execute("PRAGMA integrity_check").fetchone()
             if result is None or result[0] != "ok":
                 raise BackupError("Database failed SQLite integrity validation.")
