@@ -1,77 +1,158 @@
 # Railway Reservation System
 
-## About the Project
+## About
 
-The **Railway Reservation System** is a software application designed to simplify the process of searching for trains, checking seat availability, booking tickets, and managing railway reservations.
+The Railway Reservation System is a Python application for searching trains, checking seat availability, booking tickets and managing reservations. It provides a command-line interface (CLI) and a graphical interface built with Streamlit. Data is stored in SQLite.
 
-The system will provide functionality for passengers to search for suitable trains and manage their bookings, while administrators will be able to manage relevant railway and reservation information.
+## Team
 
-The project is being developed using **Python** and follows an Agile software development approach.
+| Name | SRN |
+|---|---|
+| Tanisha Mathur | PES1UG24CS491 |
+| Urav B S | PES1UG24CS507 |
+| Vennela Shakthi V P | PES1UG24CS525 |
+| Yashas Shivarajappa | PES1UG24CS545 |
 
-## Team Members
+## Features
 
-| Name       | SRN       |
-| ---------- | --------- |
-| `Tanisha Mathur` | `PES1UG24CS491` |
-| `Urav B S` | `PES1UG24CS507` |
-| `Vennela Shakthi V P` | `PES1UG24CS525` |
-| `Yashas Shivarajappa` | `PES1UG24CS545` |
+- Passenger registration, login and logout
+- Train search by source, destination and travel date
+- Seat availability and fare lookup
+- Booking for 1–6 passengers with seat allocation
+- Passenger booking history and PNR lookup
+- Booking cancellation with refund calculation
+- Admin-only train add, update and remove operations
+- SQLite persistence
+- Streamlit graphical interface and original CLI
 
+## Requirements
 
-## Features and Status
+- Python 3.10 or newer
+- pip and Git
+- Streamlit (installed through requirements.txt)
 
-| Area | Requirements | Status |
-|------|--------------|--------|
-| Shared data model and SQLite storage | TASK-01, NFR-05 (storage layer) | Done |
-| Train search | FR-01, FR-03 | Done |
-| Seat availability | FR-02 | Done |
-| Cancellation (cancel by PNR, validation) | FR-06, FR-08 | Done |
-| Cancellation (4-hour deadline, refund) | BR-02, FR-07 | Done |
-| Registration and password hashing | FR-09, SR-01 | Done |
-| Login and logout | FR-10 | Done |
-| Booking, PNR, seat allocation, traveller checks | FR-04, FR-05, BR-01, NFR-03 | Done |
-| View booking by PNR, booking history | FR-11, FR-12 | Not started |
-| Administration | FR-13, FR-14, FR-15 | Not started |
-| Role-based access control | SR-02 | Not started |
+## Setup
 
-## Getting Started
+Clone the repository:
 
-You need Python 3 installed. Then run these commands one at a time:
+\`\`\`bash
+git clone https://github.com/SE-miniprojectCS491-507-525-545/SEminiproject-491-507-525-545.git
+cd SEminiproject-491-507-525-545
+\`\`\`
 
-    git clone https://github.com/SE-miniprojectCS491-507-525-545/SEminiproject-491-507-525-545.git
-    cd SEminiproject-491-507-525-545
-    python3 -m venv .venv
-    source .venv/bin/activate
-    pip install -r requirements-dev.txt
-    python -m pytest
+Create and activate a virtual environment.
 
-On Windows, activate the environment with `.venv\Scripts\activate` instead of the `source` line.
+**macOS / Linux**
+\`\`\`bash
+python3 -m venv .venv
+source .venv/bin/activate
+\`\`\`
 
-The database is a single SQLite file, `railway.db`, created in the project folder the first time the program connects. It is ignored by git. Set the `RAILWAY_DB` environment variable to use a different file.
+**Windows PowerShell**
+\`\`\`powershell
+py -m venv .venv
+.venv\Scripts\Activate.ps1
+\`\`\`
 
-## Project Structure
+Install application dependencies:
 
-- src/railway/ : application code
-  - models.py : shared data classes (Train, SeatClass, Passenger, Traveller, Booking)
-  - storage.py : all SQLite code (tables, saving and loading, atomic cancellation)
-  - dates.py : shared date parsing
-  - search.py : train search and input validation
-  - availability.py : seat availability
-  - booking.py : ticket booking and confirmation text
-  - pnr.py : PNR generation
-  - seats.py : seat allocation
-  - traveller_validation.py : passenger detail checks and the 6-passenger limit
-  - cancellation.py : cancellation, 4-hour deadline and refund
-  - registration.py, auth.py, security.py : registration, login and password hashing
-- tests/ : pytest unit and integration tests
-- docs/ : requirements, user stories, SAD, SRS, test plan, deviation log
-- .github/ : CI configuration
+\`\`\`bash
+pip install -r requirements.txt
+\`\`\`
 
-## Documentation
+For development and testing, install:
 
-- Requirements and user stories: see the docs/ folder
-- Differences between the built system and the submitted documents: docs/deviation-log.md
+\`\`\`bash
+pip install -r requirements-dev.txt
+\`\`\`
 
-## Workflow
+## Run the Streamlit UI
 
-We work in Agile sprints. Each issue gets its own branch, a pull request, a review by the repo owner, and a merge into main. Sprint demo videos are stored in the repository.
+Run from the repository root:
+
+\`\`\`bash
+PYTHONPATH=src streamlit run app.py
+\`\`\`
+
+Streamlit displays a local address, usually http://localhost:8501, which can be opened in a browser.
+
+On Windows PowerShell:
+
+\`\`\`powershell
+$env:PYTHONPATH = "src"
+streamlit run app.py
+\`\`\`
+
+The sidebar provides navigation. Passengers can register, log in, search trains, check seats, book tickets, view their bookings, look up a PNR and cancel eligible bookings. Administrators also see train-management controls.
+
+### Demo data
+
+Click **Load demo data** in the sidebar to add sample trains and a passenger account to an empty database. It does not overwrite existing train data.
+
+Demo passenger:
+- Email: demo@railway.com
+- Password: demo12345
+
+Use demo credentials only for demonstrations.
+
+## Run the CLI
+
+The original CLI remains available:
+
+\`\`\`bash
+PYTHONPATH=src python -m railway
+\`\`\`
+
+Seed demo data from the CLI:
+
+\`\`\`bash
+PYTHONPATH=src python -m railway --seed
+\`\`\`
+
+## Run tests
+
+Install development dependencies, then run:
+
+\`\`\`bash
+PYTHONPATH=src python -m pytest
+\`\`\`
+
+Coverage report:
+
+\`\`\`bash
+PYTHONPATH=src python -m pytest --cov=railway --cov-report=term-missing
+\`\`\`
+
+## Database
+
+The app creates railway.db in the repository root on first use. Git ignores this database file. To use a different database, set RAILWAY_DB before launching.
+
+macOS / Linux:
+\`\`\`bash
+export RAILWAY_DB=/path/to/your/railway.db
+\`\`\`
+
+Windows PowerShell:
+\`\`\`powershell
+$env:RAILWAY_DB = "C:\path\to\railway.db"
+\`\`\`
+
+## Project structure
+
+- app.py — Streamlit graphical interface
+- src/railway/ — backend application logic and CLI
+  - models.py — shared data models
+  - storage.py — SQLite persistence
+  - registration.py, auth.py, security.py — account and password handling
+  - search.py, availability.py — train search and seat availability
+  - booking.py, pnr.py, seats.py — ticket booking and seat allocation
+  - booking_views.py — booking details and access checks
+  - cancellation.py — cancellation and refund rules
+  - cli.py — command-line interface
+- tests/ — automated tests
+- docs/ — requirements, design and testing documents
+- .github/ — GitHub Actions workflows
+
+## Team workflow
+
+Each change is developed on a separate feature branch and submitted through a pull request for review before merging into main.
