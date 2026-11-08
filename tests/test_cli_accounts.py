@@ -30,10 +30,25 @@ def test_status_line_follows_login_state(run_cli):
     assert out.rstrip().splitlines()[-2] == "Logged in as Demo User"
 
 
-def test_weak_password_is_rejected_with_a_message(run_cli, cli_conn):
-    out = run_cli(["1", "Asha", "asha@x.com", "short1", "0"])
+def test_weak_password_can_be_retried_without_reentering_details(run_cli, cli_conn):
+    out = run_cli([
+        "1", "Asha", "asha@x.com", "short1", "asha12345", "0"
+    ])
     assert "Error: Password must be at least 8 characters." in out
-    assert storage.get_passenger(cli_conn, "asha@x.com") is None
+    assert "Please try entering your password again." in out
+    assert "Registered Asha" in out
+    stored = storage.get_passenger(cli_conn, "asha@x.com")
+    assert stored is not None
+    assert stored.password_hash != "asha12345"
+
+
+def test_password_missing_letter_can_be_retried(run_cli, cli_conn):
+    out = run_cli([
+        "1", "Asha", "asha@x.com", "12345678", "asha12345", "0"
+    ])
+    assert "Password must contain at least one letter and one digit." in out
+    assert "Registered Asha" in out
+    assert storage.get_passenger(cli_conn, "asha@x.com") is not None
 
 
 def test_duplicate_registration_is_rejected(run_cli):
