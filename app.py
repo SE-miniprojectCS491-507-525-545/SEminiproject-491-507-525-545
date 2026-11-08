@@ -20,11 +20,6 @@ st.set_page_config(page_title="Railway Reservation System", page_icon="🚆", la
 st.title("🚆 Railway Reservation System")
 st.caption("Search trains, book tickets and manage your journeys.")
 
-def connection():
-    if "db" not in st.session_state:
-        st.session_state.db = storage.connect()
-    return st.session_state.db
-
 def passenger_now(conn):
     token = st.session_state.get("token")
     if not token:
@@ -290,7 +285,15 @@ def admin_screen(conn, user):
             st.info("No trains to remove.")
 
 def main():
-    conn = connection()
+    # Streamlit may rerun this script on a different thread. Keep the SQLite
+    # connection local to this run instead of storing it in session_state.
+    conn = storage.connect()
+    try:
+        render_app(conn)
+    finally:
+        conn.close()
+
+def render_app(conn):
     st.session_state.setdefault("sessions", {})
     user = passenger_now(conn)
     with st.sidebar:
