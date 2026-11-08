@@ -12,7 +12,7 @@ EVERY_DAY = tuple(range(7))
 
 DEMO_EMAIL = "demo@railway.com"
 DEMO_PASSWORD = "demo12345"  # nosec B105 - public local-demo credential only
-DEMO_ADMIN_EMAIL = "admin@railway.com"
+DEMO_ADMIN_EMAIL = "railway-admin-demo@railway.com"
 DEMO_ADMIN_PASSWORD = "Admin12345"  # nosec B105 - public local-demo credential only
 
 _TRAINS = [

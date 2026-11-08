@@ -680,7 +680,7 @@ def main(
     try:
         if args.seed and seed_demo_data(conn):
             say(
-                f"Sample data added. Passenger demo: "
+                f"Sample data added. Demo login: "
                 f"{DEMO_EMAIL} / {DEMO_PASSWORD}"
             )
             say(

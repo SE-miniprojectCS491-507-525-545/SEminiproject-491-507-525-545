@@ -6,7 +6,7 @@ Run the application with `python -m railway --seed` to create sample trains
 and two separate demo accounts:
 
 - Passenger: `demo@railway.com` / `demo12345`
-- Administrator: `admin@railway.com` / `Admin12345`
+- Administrator: `railway-admin-demo@railway.com` / `Admin12345`
 
 These credentials are intentionally convenient for local demonstrations only.
 Do not use them in a shared or deployed environment. Change the passwords or
