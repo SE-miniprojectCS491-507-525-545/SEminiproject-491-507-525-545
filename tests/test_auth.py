@@ -1,6 +1,8 @@
 import pytest
 
-from railway.auth import AuthError, current_passenger, login, logout
+from railway.auth import (
+    AuthError, SessionStore, current_passenger, login, logout,
+)
 from railway.registration import register_passenger
 
 
@@ -110,7 +112,31 @@ def test_current_passenger_with_unknown_token_is_refused(passengers):
     with pytest.raises(AuthError, match="Not logged in"):
         current_passenger("not-a-real-token", passengers, {})
 
+
 def test_session_for_a_deleted_account_gives_auth_error_not_key_error():
     sessions = {"tok": "ghost@example.com"}
     with pytest.raises(AuthError):
         current_passenger("tok", {}, sessions)
+
+
+def test_session_expires_after_configured_timeout(monkeypatch, passengers):
+    import railway.auth as auth
+
+    now = [100.0]
+    monkeypatch.setattr(auth.time, "monotonic", lambda: now[0])
+    monkeypatch.setenv("RAILWAY_SESSION_TTL_SECONDS", "10")
+    sessions = SessionStore()
+    token = login("asha@example.com", "Secret123", passengers, sessions)
+    assert current_passenger(token, passengers, sessions) is passengers["asha@example.com"]
+    now[0] = 110.0
+    with pytest.raises(AuthError, match="Session expired"):
+        current_passenger(token, passengers, sessions)
+    assert token not in sessions
+
+
+def test_invalid_session_timeout_configuration_is_rejected(monkeypatch, passengers):
+    monkeypatch.setenv("RAILWAY_SESSION_TTL_SECONDS", "0")
+    sessions = SessionStore()
+    token = login("asha@example.com", "Secret123", passengers, sessions)
+    with pytest.raises(AuthError, match="positive integer"):
+        current_passenger(token, passengers, sessions)

@@ -13,7 +13,7 @@ import re
 from datetime import date, datetime
 
 from railway import storage
-from railway.auth import current_passenger, login, logout
+from railway.auth import SessionStore, current_passenger, login, logout
 from railway.availability import list_availability
 from railway.cancellation import (
     calculate_refund,
@@ -21,7 +21,10 @@ from railway.cancellation import (
     validate_cancellation,
     validate_deadline,
 )
-from railway.demo_data import DEMO_EMAIL, DEMO_PASSWORD, seed_demo_data
+from railway.demo_data import (
+    DEMO_ADMIN_EMAIL, DEMO_ADMIN_PASSWORD, DEMO_EMAIL, DEMO_PASSWORD,
+    seed_demo_data,
+)
 from railway.models import ROLE_ADMIN, SeatClass, Train, Traveller
 from railway.traveller_validation import TravellerError, validate_traveller
 from railway.registration import register_passenger
@@ -78,7 +81,7 @@ class App:
         self.today = today
         self.now = now
         self.book_ticket = book_ticket
-        self.sessions = {}
+        self.sessions = SessionStore()
         self.token = None
 
         self.handlers = {
@@ -677,8 +680,16 @@ def main(
     try:
         if args.seed and seed_demo_data(conn):
             say(
-                f"Sample data added. Demo login: "
+                f"Sample data added. Passenger demo: "
                 f"{DEMO_EMAIL} / {DEMO_PASSWORD}"
+            )
+            say(
+                f"Administrator demo: "
+                f"{DEMO_ADMIN_EMAIL} / {DEMO_ADMIN_PASSWORD}"
+            )
+            say(
+                "Demo credentials are for local use only; change them "
+                "before any shared or deployed use."
             )
 
         App(
