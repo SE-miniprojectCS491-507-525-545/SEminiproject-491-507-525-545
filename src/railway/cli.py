@@ -176,15 +176,28 @@ class App:
     def register(self):
         name = self.ask("Full name: ")
         email = self.ask("Email: ")
-        password = self.ask_secret("Password: ")
-
         passengers = storage.load_passengers(self.conn)
-        passenger = register_passenger(
-            name,
-            email,
-            password,
-            passengers,
-        )
+
+        # Keep the name and email, and retry only password validation errors.
+        while True:
+            password = self.ask_secret("Password: ")
+            try:
+                passenger = register_passenger(
+                    name,
+                    email,
+                    password,
+                    passengers,
+                )
+                break
+            except ValueError as err:
+                # RegistrationError is a ValueError. Only password errors
+                # should repeat this prompt; identity/email errors still
+                # return to the main menu as before.
+                if not str(err).startswith("Password"):
+                    raise
+                self.say(f"Error: {err}")
+                self.say("Please try entering your password again.")
+
         storage.add_passenger(self.conn, passenger)
 
         self.say(
