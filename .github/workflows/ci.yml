@@ -30,8 +30,8 @@ jobs:
       - name: Generate Bandit security reports
         run: |
           mkdir -p reports
-          python -m bandit -r src app.py -f json -o reports/bandit-report.json --exit-zero
-          python -m bandit -r src app.py -f html -o reports/bandit-report.html --exit-zero
+          python -m bandit -r src app.py --ignore-nosec -f json -o reports/bandit-report.json --exit-zero
+          python -m bandit -r src app.py --ignore-nosec -f html -o reports/bandit-report.html --exit-zero
           python scripts/generate_bandit_report.py reports/bandit-report.json docs/testing/bandit-security-report.md
 
       - name: Run Bandit security gate
