@@ -129,7 +129,7 @@ See the [Code Coverage Report](docs/testing/code-coverage-report.md) for the rec
 
 ### Security analysis report
 
-The CI workflow also runs [Bandit](https://bandit.readthedocs.io/) against the Python source under `src/`. It generates a Markdown findings summary at [docs/testing/bandit-security-report.md](docs/testing/bandit-security-report.md), plus downloadable HTML and JSON reports as GitHub Actions artifacts. The Markdown report is refreshed automatically on pushes to `main`.
+The CI workflow also runs [Bandit](https://bandit.readthedocs.io/) against the Python backend under `src/` and the Streamlit frontend in `app.py`. The report includes potential detections even on lines marked with `# nosec`, while the separate CI security gate honours those explicit suppressions. It generates a Markdown findings summary at [docs/testing/bandit-security-report.md](docs/testing/bandit-security-report.md), plus downloadable HTML and JSON reports as GitHub Actions artifacts. The Markdown report is refreshed automatically on pushes to `main`.
 
 ## Database
 
