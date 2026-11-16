@@ -133,8 +133,8 @@ def main() -> int:
         "",
         "## 5. Scope and limitations",
         "",
-        "- This scan covers the Python backend under `src/` and the root Streamlit frontend `app.py`.
-- The report-generation scan uses Bandit's `--ignore-nosec` option to expose detections even where code comments explicitly suppress a rule. Review these findings in context; the normal CI security gate runs without that option and continues to honor the existing suppressions.",
+        "- This scan covers the Python backend under `src/` and the root Streamlit frontend `app.py`.",
+        "- The report-generation scan uses Bandit `--ignore-nosec` so detections remain visible even where source comments explicitly suppress a rule. Review those findings in context; the normal CI security gate runs without that option and continues to honor the suppressions.",
         "- Bandit analyses project source code; it does not check third-party package advisories. The separate `pip-audit` CI step performs dependency vulnerability checks.",
         "- This report is refreshed by GitHub Actions on pushes to `main`. Pull-request runs also produce downloadable JSON and HTML report files as workflow artifacts.",
         "- Review this report alongside code review, automated tests, dependency auditing and manual security testing.",
