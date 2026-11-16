@@ -127,6 +127,10 @@ PYTHONPATH=src python -m pytest --cov=src --cov-branch --cov-report=term-missing
 
 See the [Code Coverage Report](docs/testing/code-coverage-report.md) for the recorded **94.38%** result, an explanation of how coverage is measured, the CI run reference and per-file coverage results. This percentage is a dated CI result and can change as the code and tests change.
 
+### Security analysis report
+
+The CI workflow also runs [Bandit](https://bandit.readthedocs.io/) against the Python source under `src/`. It generates a Markdown findings summary at [docs/testing/bandit-security-report.md](docs/testing/bandit-security-report.md), plus downloadable HTML and JSON reports as GitHub Actions artifacts. The Markdown report is refreshed automatically on pushes to `main`.
+
 ## Database
 
 The app creates railway.db in the repository root on first use. Git ignores this database file. To use a different database, set RAILWAY_DB before launching.
