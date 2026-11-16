@@ -2,7 +2,14 @@ name: CI
 
 on:
   push:
+    # The report is committed by this workflow. Ignore that report-only commit
+    # to prevent an endless sequence of CI runs.
+    paths-ignore:
+      - "docs/testing/bandit-security-report.md"
   pull_request:
+
+permissions:
+  contents: write
 
 jobs:
   test:
@@ -20,7 +27,14 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -r requirements-dev.txt
 
-      - name: Run Bandit security checks
+      - name: Generate Bandit security reports
+        run: |
+          mkdir -p reports
+          python -m bandit -r src -f json -o reports/bandit-report.json --exit-zero
+          python -m bandit -r src -f html -o reports/bandit-report.html --exit-zero
+          python scripts/generate_bandit_report.py reports/bandit-report.json docs/testing/bandit-security-report.md
+
+      - name: Run Bandit security gate
         run: python -m bandit -q -r src
 
       - name: Audit dependencies
@@ -28,3 +42,28 @@ jobs:
 
       - name: Run tests with coverage
         run: python -m pytest --cov=src --cov-branch --cov-report=term-missing --cov-fail-under=80
+
+      - name: Upload Bandit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-security-reports-${{ github.sha }}
+          path: |
+            reports/bandit-report.json
+            reports/bandit-report.html
+            docs/testing/bandit-security-report.md
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Commit updated Bandit Markdown report on main
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          if [ -f docs/testing/bandit-security-report.md ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docs/testing/bandit-security-report.md
+            if ! git diff --cached --quiet; then
+              git commit -m "docs(security): refresh Bandit scan report"
+              git push
+            fi
+          fi
