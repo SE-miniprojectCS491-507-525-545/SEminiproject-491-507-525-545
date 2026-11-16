@@ -119,9 +119,13 @@ PYTHONPATH=src python -m pytest
 
 Coverage report:
 
+The CI workflow measures statement and branch coverage for the Python package under `src/`, and requires at least 80% coverage:
+
 \`\`\`bash
-PYTHONPATH=src python -m pytest --cov=railway --cov-report=term-missing
+PYTHONPATH=src python -m pytest --cov=src --cov-branch --cov-report=term-missing --cov-fail-under=80
 \`\`\`
+
+See the [Code Coverage Report](docs/testing/code-coverage-report.md) for the recorded **94.38%** result, an explanation of how coverage is measured, the CI run reference and per-file coverage results. This percentage is a dated CI result and can change as the code and tests change.
 
 ## Database
 
