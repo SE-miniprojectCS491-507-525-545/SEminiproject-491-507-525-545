@@ -156,3 +156,10 @@ $env:RAILWAY_DB = "C:\path\to\railway.db"
 ## Team workflow
 
 Each change is developed on a separate feature branch and submitted through a pull request for review before merging into main.
+
+
+## Project documentation
+
+For the complete developer-facing description of the current implementation, see **[Project and Technical Documentation](docs/PROJECT_DOCUMENTATION.md)**. It covers the Streamlit frontend, CLI, backend modules, Python service/API contracts, SQLite data model, security controls, configuration, test organization, recorded measurements, known limitations and documentation maintenance.
+
+The detailed SDLC artefacts remain under `docs/`, including the SRS, software architecture/design document, requirements, user stories, deviation log, test plan, test cases, traceability matrix and test execution log.
