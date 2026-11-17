@@ -1,7 +1,7 @@
 # Bandit Security Scan Report
 
-**Generated:** 2026-11-16 23:45:29 UTC  
-**Commit scanned:** `8a95af98fcc46c990de2fd99af40beaf828d60af`  
+**Generated:** 2026-11-17 03:10:58 UTC  
+**Commit scanned:** `c2fad844da0f5a07f5a97b67172c971bc5da4956`  
 **Scan scope:** Python source under `src/` and the root Streamlit `app.py`  
 **Overall result:** **2 finding(s)**
 
